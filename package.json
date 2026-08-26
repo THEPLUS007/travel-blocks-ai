@@ -29,6 +29,6 @@
     "verify": "npm run lint && npm run typecheck && npm test && npm run build:apps"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12 <23"
   }
 }

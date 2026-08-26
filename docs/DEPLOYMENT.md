@@ -1,5 +1,9 @@
 # Deployment
 
+
+## Runtime
+
+Production과 CI는 Node.js 22 LTS(`>=22.12 <23`)를 사용합니다. `.nvmrc`의 버전으로 local/CI/runtime을 맞춥니다.
 ## 현재 서버
 
 PostgreSQL은 같은 Ubuntu 호스트의 `127.0.0.1:5432`에서 실행됩니다. code-server는 8080에서 `/proxy/5173/`을 web preview로 전달합니다. web preview는 prefix-relative `/api`를 `127.0.0.1:3000`으로 전달합니다.

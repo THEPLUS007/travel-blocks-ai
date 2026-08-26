@@ -2,6 +2,10 @@
 
 Day와 Travel Block 단위로 여행 일정을 편집하고 PostgreSQL에 영구 저장하는 React/Fastify 서비스입니다. 해커톤 원본은 `hackathon-submission-2026-07-10` 태그에 보존돼 있습니다.
 
+## Runtime
+
+이 저장소는 Node.js 22 LTS를 사용합니다. 지원 범위는 `>=22.12 <23`이며 `.nvmrc`에 검증 기준 patch 버전을 기록합니다.
+
 ## 지원 기능
 
 - Day/Block 생성·수정·삭제·복사·이동·정렬과 교통 연결
