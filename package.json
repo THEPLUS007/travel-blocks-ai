@@ -11,7 +11,7 @@
     "dev": "npm run dev -w @travel-blocks/api & npm run dev -w @travel-blocks/web",
     "dev:api": "npm run dev -w @travel-blocks/api",
     "dev:web": "npm run dev -w @travel-blocks/web",
-    "build": "npm run build -w @travel-blocks/shared && npm run build -w @travel-blocks/domain && npm run build -w @travel-blocks/ai && npm run build -w @travel-blocks/api && npm run build -w @travel-blocks/mcp && npm run build -w @travel-blocks/web",
+    "build": "npm run build:packages && npm run build:apps",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test:unit && npm run test:api && npm run test:mcp",
     "test:unit": "npm run test -w @travel-blocks/domain && npm run test -w @travel-blocks/ai",
@@ -22,7 +22,11 @@
     "db:migrate": "npm run db:migrate -w @travel-blocks/api",
     "migrate": "npm run migrate -w @travel-blocks/api",
     "typecheck": "npm run lint --workspaces --if-present",
-    "test:postgres": "npm run test:postgres -w @travel-blocks/api"
+    "test:postgres": "npm run test:postgres -w @travel-blocks/api",
+    "build:packages": "npm run build -w @travel-blocks/shared && npm run build -w @travel-blocks/domain && npm run build -w @travel-blocks/ai",
+    "build:apps": "npm run build -w @travel-blocks/api && npm run build -w @travel-blocks/mcp && npm run build -w @travel-blocks/web",
+    "pretest": "npm run build:packages",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build:apps"
   },
   "engines": {
     "node": ">=20"

@@ -44,13 +44,18 @@ npm run preview -w @travel-blocks/web
 
 ## 검증 명령
 
+깨끗한 clone의 공식 baseline 검증은 다음 두 명령입니다. `npm test`도 필요한 내부 workspace package를 먼저 빌드하므로 독립 실행할 수 있습니다.
+
 ```bash
-npm run lint
-npm run typecheck
-npm run build
-npm test
-npm run test:postgres
-npm run test:e2e
+npm ci
+npm run verify
+```
+
+`verify`는 lint, typecheck, unit/API/MCP test, application build를 순서대로 실행합니다. 외부 환경이 필요한 검증은 별도입니다.
+
+```bash
+npm run test:postgres  # 전용 PostgreSQL과 DATABASE_URL 필요
+npm run test:e2e      # Playwright Chromium 필요
 ```
 
 상세 내용은 [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Data Model](docs/DATA_MODEL.md), [Security](docs/SECURITY.md), [Deployment](docs/DEPLOYMENT.md)를 참고하세요.
