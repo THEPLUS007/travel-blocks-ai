@@ -1,0 +1,1 @@
+{"name":"@travel-blocks/domain","version":"1.0.0","private":true,"type":"module","scripts":{"build":"tsc -p tsconfig.json","lint":"tsc -p tsconfig.json --noEmit","test":"vitest run"},"dependencies":{"@travel-blocks/shared":"1.0.0"},"devDependencies":{"typescript":"^5.7.2","vitest":"^3.2.4"},"exports":{".":{"types":"./src/index.ts","default":"./dist/index.js"}}}

@@ -1,0 +1,1 @@
+{"name":"@travel-blocks/mcp","version":"1.0.0","private":true,"type":"module","scripts":{"build":"node --check server.mjs","lint":"node --check server.mjs","test":"node server.test.mjs"}}

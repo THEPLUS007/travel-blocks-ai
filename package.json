@@ -1,0 +1,30 @@
+{
+  "name": "travel-blocks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @travel-blocks/api & npm run dev -w @travel-blocks/web",
+    "dev:api": "npm run dev -w @travel-blocks/api",
+    "dev:web": "npm run dev -w @travel-blocks/web",
+    "build": "npm run build -w @travel-blocks/shared && npm run build -w @travel-blocks/domain && npm run build -w @travel-blocks/ai && npm run build -w @travel-blocks/api && npm run build -w @travel-blocks/mcp && npm run build -w @travel-blocks/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test:unit && npm run test:api && npm run test:mcp",
+    "test:unit": "npm run test -w @travel-blocks/domain && npm run test -w @travel-blocks/ai",
+    "test:api": "npm run test -w @travel-blocks/api",
+    "test:e2e": "npm run test:e2e -w @travel-blocks/web",
+    "test:mcp": "npm run test -w @travel-blocks/mcp",
+    "db:generate": "npm run db:generate -w @travel-blocks/api",
+    "db:migrate": "npm run db:migrate -w @travel-blocks/api",
+    "migrate": "npm run migrate -w @travel-blocks/api",
+    "typecheck": "npm run lint --workspaces --if-present",
+    "test:postgres": "npm run test:postgres -w @travel-blocks/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

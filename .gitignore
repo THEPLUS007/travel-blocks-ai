@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+logs/
+submission*.zip
+*.tsbuildinfo
+.claude/
+.codex/

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "travel-blocks-ai-local": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp/server.mjs"],
+      "env": {
+        "TRAVEL_BLOCKS_USE_MOCK": "true"
+      }
+    }
+  }
+}

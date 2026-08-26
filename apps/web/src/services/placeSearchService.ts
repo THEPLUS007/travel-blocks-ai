@@ -1,0 +1,7 @@
+import { INTERNAL_PLACE_SEARCH_ENDPOINT } from './config';
+import type { TravelBlockCategory, TravelDay } from '../types/travel';
+export interface PlaceSearchInput { query:string; category:TravelBlockCategory; city?:string; region?:string }
+export interface PlaceSearchResult { id:string; name:string; category:TravelBlockCategory; city:string; region:string; address:string; priceLevel:'low'|'medium'|'high'; estimatedCost:string; memo:string }
+interface ApiPlace { provider:string;providerPlaceId:string;name:string;formattedAddress:string;city:string;region:string;category:string }
+export async function searchTravelPlacesWithFallback(input:PlaceSearchInput):Promise<PlaceSearchResult[]>{if(!input.query.trim())return [];const params=new URLSearchParams({query:input.query,category:input.category});if(input.city)params.set('city',input.city);if(input.region)params.set('region',input.region);const response=await fetch(`${INTERNAL_PLACE_SEARCH_ENDPOINT}?${params}`,{credentials:'same-origin'});if(!response.ok)throw new Error('장소 검색을 사용할 수 없습니다.');const places=await response.json() as ApiPlace[];return places.map((place)=>({id:`${place.provider}:${place.providerPlaceId}`,name:place.name,category:input.category,city:place.city,region:place.region,address:place.formattedAddress,priceLevel:'medium',estimatedCost:'',memo:'검증된 장소'}));}
+export function getDayPlaceScope(day?:TravelDay){return {city:day?.city,region:day?.region};}
