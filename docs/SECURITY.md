@@ -30,3 +30,7 @@
 ## Source URL fetching
 
 서버 source pipeline은 HTTP/HTTPS만 허용하고 credential URL, localhost, loopback, private/link-local/multicast/reserved IPv4·IPv6 및 metadata 주소를 차단합니다. DNS의 모든 응답 주소를 검증하고 선택한 public address를 Node HTTP(S) `lookup`에 고정하여 요청하며, redirect마다 URL과 DNS를 다시 검증합니다. Redirect는 3회, 전체 timeout은 10초, response는 streaming 256 KiB, 정규화 AI 입력은 12,000자로 제한합니다. `text/html`과 `text/plain`만 허용합니다.
+
+## AI telemetry privacy
+
+`ai_generation_runs`에는 prompt, 추출한 원문 콘텐츠, provider raw response, API key를 저장하지 않습니다. 운영 기록은 provider/model/task/status/latency/token count/error code로 제한하며 DB insert 오류 로그도 sanitized error code만 포함합니다.

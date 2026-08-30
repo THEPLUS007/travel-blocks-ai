@@ -14,13 +14,13 @@ import {
   type TripPlanningInput,
   type TravelPlanDraft,
 } from '@travel-blocks/shared';
-import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
-import { buildGenerateTripPrompt } from './prompts/generateTrip.js';
-import { buildExtractIntentPrompt } from './prompts/extractIntent.js';
-import { buildRankPlacesPrompt } from './prompts/rankPlaces.js';
-import type { TaskPrompt } from './prompts/common.js';
 import type { ZodType } from 'zod';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
+import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
+import type { TaskPrompt } from './prompts/common.js';
+import { buildExtractIntentPrompt } from './prompts/extractIntent.js';
+import { buildGenerateTripPrompt } from './prompts/generateTrip.js';
+import { buildRankPlacesPrompt } from './prompts/rankPlaces.js';
 
 export interface TravelAiProvider {
   extractIntent(input: GenerateTripInput): Promise<TravelIntent>;
@@ -30,6 +30,20 @@ export interface TravelAiProvider {
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult>;
 }
 
+export type AiTask = 'extract_intent' | 'generate_trip' | 'analyze_text' | 'rank_places';
+export type AiRunStatus = 'success' | 'error';
+export interface AiRunEvent {
+  provider: 'gemini';
+  model: string;
+  task: AiTask;
+  status: AiRunStatus;
+  latencyMs: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  errorCode?: AiErrorCode;
+}
+export interface AiRunObserver { record(event: AiRunEvent): void | Promise<void> }
+
 export type AiErrorCode = 'rate_limit' | 'unavailable' | 'timeout' | 'auth' | 'invalid_output' | 'bad_request' | 'network';
 export class AiProviderError extends Error {
   constructor(public code: AiErrorCode, public retryable: boolean, public status?: number, cause?: unknown) {
@@ -38,6 +52,7 @@ export class AiProviderError extends Error {
   }
 }
 
+interface AiUsage { inputTokens?: number; outputTokens?: number }
 export interface GeminiProviderOptions {
   apiKey: string;
   model?: string;
@@ -46,7 +61,9 @@ export interface GeminiProviderOptions {
   maxRetries?: number;
   maxConcurrency?: number;
   fetch?: typeof fetch;
-  onUsage?: (usage: { inputTokens?: number; outputTokens?: number }) => void;
+  onUsage?: (usage: AiUsage) => void;
+  observer?: AiRunObserver;
+  onObserverError?: (error: unknown) => void;
 }
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const classify = (status: number) => status === 429 ? new AiProviderError('rate_limit', true, status) : [500, 502, 503, 504].includes(status) ? new AiProviderError('unavailable', true, status) : [401, 403].includes(status) ? new AiProviderError('auth', false, status) : new AiProviderError('bad_request', false, status);
@@ -87,48 +104,59 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
     const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('analyze_travel_content', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model);
+    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model);
   }
 
   async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
     const parsed = PlaceRankingInputSchema.parse(input);
-    const result = await this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), PlaceRankingResultSchema, this.model);
     const allowed = new Set(parsed.candidates.map((candidate) => candidate.candidateId));
-    const selected = new Set<string>();
-    for (const selection of result.selections) {
-      if (!allowed.has(selection.candidateId) || selected.has(selection.candidateId)) throw new AiProviderError('invalid_output', false);
-      selected.add(selection.candidateId);
-    }
-    return result;
+    const rankingSchema = PlaceRankingResultSchema.superRefine((value, context) => {
+      const selected = new Set<string>();
+      value.selections.forEach((selection, index) => {
+        if (!allowed.has(selection.candidateId) || selected.has(selection.candidateId)) context.addIssue({ code: 'custom', path: ['selections', index, 'candidateId'], message: 'Candidate ID must be allowed and unique.' });
+        selected.add(selection.candidateId);
+      });
+    });
+    return this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), rankingSchema, this.model);
   }
 
-  private async slot<T>(task: () => Promise<T>): Promise<T> {
+  private async slot<T>(operation: () => Promise<T>): Promise<T> {
     const max = this.options.maxConcurrency ?? 2;
     if (this.active >= max) await new Promise<void>((resolve) => this.queue.push(resolve));
     this.active++;
-    try { return await task(); } finally { this.active--; this.queue.shift()?.(); }
+    try { return await operation(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: string, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
+  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
     const key = `${model}:${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
-    const promise = this.slot(async () => {
+    const startedAt = Date.now();
+    let usage: AiUsage = {};
+    const operation = this.slot(async () => {
       let last: unknown;
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-        try { return await this.call(prompt, schema, model); } catch (error) {
+        try { return await this.call(prompt, schema, model, (value) => { usage = value; }); } catch (error) {
           last = error;
           if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries) throw error;
           await wait(Math.min(250 * 2 ** attempt, 2000));
         }
       }
       throw last;
-    }).finally(() => this.inFlight.delete(key));
+    });
+    const promise = operation.then(
+      async (result) => { await this.observe({ provider: 'gemini', model, task, status: 'success', latencyMs: Date.now() - startedAt, ...usage }); return result; },
+      async (error) => { await this.observe({ provider: 'gemini', model, task, status: 'error', latencyMs: Date.now() - startedAt, ...usage, errorCode: error instanceof AiProviderError ? error.code : 'network' }); throw error; },
+    ).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, promise);
     return promise;
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
+  private async observe(event: AiRunEvent): Promise<void> {
+    try { await this.options.observer?.record(event); } catch (error) { this.options.onObserverError?.(error); }
+  }
+
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -140,7 +168,9 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
       });
       if (!response.ok) throw classify(response.status);
       const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
-      this.options.onUsage?.({ inputTokens: body.usageMetadata?.promptTokenCount, outputTokens: body.usageMetadata?.candidatesTokenCount });
+      const usage = { inputTokens: body.usageMetadata?.promptTokenCount, outputTokens: body.usageMetadata?.candidatesTokenCount };
+      captureUsage(usage);
+      this.options.onUsage?.(usage);
       const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new AiProviderError('invalid_output', false);
       try { return schema.parse(JSON.parse(text)); } catch (error) { throw new AiProviderError('invalid_output', false, undefined, error); }

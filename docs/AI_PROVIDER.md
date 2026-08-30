@@ -1,15 +1,19 @@
 # AI provider
 
-`TravelAiProvider`는 `generateTrip`, `analyzeText`, `rankPlaces`를 정의합니다. Gemini 구현은 server-only API key, timeout, retry, concurrency 제한, 동일 요청 dedupe, 오류 분류, Zod 출력 검증, usage callback을 제공합니다.
+`TravelAiProvider`는 `extractIntent`, `generateTrip`, `analyzeText`, `rankPlaces`를 정의합니다. Gemini 구현은 server-only API key, timeout, retry, concurrency 제한, 동일 요청 dedupe, 오류 분류, Zod 출력 검증, usage callback을 제공합니다.
 
-기본 모델은 2026-07-09 공식 모델 문서에서 stable로 안내된 `gemini-3.5-flash`이며 `GEMINI_MODEL`로 고정 모델을 교체할 수 있습니다. 사용자 입력은 `<user_data>` 경계 안 데이터로 전달합니다. 원문 prompt/provider response는 production log에 기록하지 않습니다. URL은 가져오지 않습니다.
+기본 모델은 2026-07-09 공식 모델 문서에서 stable로 안내된 `gemini-3.5-flash`이며 `GEMINI_MODEL`로 고정 모델을 교체할 수 있습니다. 사용자 입력은 `<user_data>` 경계 안 데이터로 전달합니다. 원문 prompt/provider response는 production log나 observability table에 기록하지 않습니다. URL 입력은 API의 safe source pipeline이 추출한 정규화 text만 AI에 전달합니다.
 
 production provider 실패 시 Mock 일정이 아니라 `AI_PROVIDER_UNAVAILABLE`과 `retryable`을 반환합니다.
 
-AI 작업은 `generateTrip`, `analyzeTravelContent`, `rankPlaces` 전용 prompt builder로 분리됩니다. system instruction과 JSON 직렬화된 `<user_data>`를 별도로 전달하며, user data 내부 지시는 실행하지 않고 secret·환경변수·내부 prompt를 노출하지 않도록 명시합니다. `analyzeText`는 text만 분석하며 URL을 가져오지 않습니다.
+AI 작업은 `extractIntent`, `generateTrip`, `analyzeText`, `rankPlaces` 전용 prompt builder로 분리됩니다. system instruction과 JSON 직렬화된 `<user_data>`를 별도로 전달하며, user data 내부 지시는 실행하지 않고 secret·환경변수·내부 prompt를 노출하지 않도록 명시합니다. `analyzeText`는 text만 분석하며 URL을 가져오지 않습니다.
 
 추천은 Place provider가 서버 내부에서 검증 후보를 검색한 뒤 AI가 후보 ID와 이유만 선택합니다. 클라이언트는 후보 목록을 제공할 수 없고, 장소명·주소·좌표·provider ID는 AI 결과가 아니라 원래 `VerifiedPlace`에서 최종 TravelBlock으로 합성합니다.
 
-세 작업 모두 `@travel-blocks/shared` Zod response schema를 `zod-to-json-schema`로 변환해 Gemini `generationConfig.responseJsonSchema`에 전달합니다. Gemini가 지원하는 JSON Schema subset만 전송하며, unsupported keyword는 제거합니다. 동일한 Zod schema로 응답을 다시 검증하므로 structured output을 application validation의 대체물로 간주하지 않습니다. Ranking은 추가로 unknown/duplicate candidate ID와 5개 초과 선택을 거부하며 empty selection은 허용합니다.
+네 작업 모두 `@travel-blocks/shared` Zod response schema를 `zod-to-json-schema`로 변환해 Gemini `generationConfig.responseJsonSchema`에 전달합니다. Gemini가 지원하는 JSON Schema subset만 전송하며, unsupported keyword는 제거합니다. 동일한 Zod schema로 응답을 다시 검증하므로 structured output을 application validation의 대체물로 간주하지 않습니다. Ranking은 추가로 unknown/duplicate candidate ID와 5개 초과 선택을 거부하며 empty selection은 허용합니다.
 
 `extractIntent`는 `TravelIntent` Zod schema와 structured output을 사용해 명시적 또는 강하게 뒷받침되는 destination, duration, travelers, budget, preferences, avoidances, mobility, categories만 추출합니다. `GEMINI_INTENT_MODEL`이 있으면 intent task에만 사용하고 없으면 `GEMINI_MODEL`로 fallback합니다.
+
+## AI run observability
+
+Gemini의 각 logical operation은 HTTP retry attempt 수와 무관하게 `extract_intent`, `generate_trip`, `analyze_text`, `rank_places` 중 하나의 lifecycle event를 생성합니다. Event에는 provider, 실제 선택 model, task, success/error status, 전체 latency, provider가 제공한 input/output token 수, 알려진 error code만 포함됩니다. Prompt, 원문 provider response, API key는 포함하지 않습니다. Observer는 callback boundary이므로 `packages/ai`는 PostgreSQL을 import하지 않습니다. Telemetry insert 실패는 sanitized server log에만 기록되고 성공한 AI 결과를 실패시키지 않습니다.

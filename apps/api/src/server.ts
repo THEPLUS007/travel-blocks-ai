@@ -1,5 +1,6 @@
 import { AiProviderError, GeminiTravelAiProvider, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TripPlanningInput, TravelPlanDraft } from '@travel-blocks/shared';
+import { PostgresAiRunRepository } from './aiRuns.js';
 import { AnonymousSessionAuth } from './auth.js';
 import { buildApp } from './app.js';
 import { loadApiConfig } from './config.js';
@@ -46,6 +47,7 @@ async function shutdown(signal: string, exitCode = 0): Promise<void> {
 try {
   await checkDatabase(pool);
   const repository = new PostgresTripRepository(pool);
+  const aiRuns = new PostgresAiRunRepository(pool);
   const places = config.googlePlacesApiKey
     ? new GooglePlacesProvider({ apiKey: config.googlePlacesApiKey, timeoutMs: config.googlePlacesTimeoutMs })
     : new UnconfiguredPlaceProvider();
@@ -57,6 +59,8 @@ try {
         timeoutMs: config.geminiTimeoutMs,
         maxRetries: config.geminiMaxRetries,
         maxConcurrency: config.geminiMaxConcurrency,
+        observer: aiRuns,
+        onObserverError: (error) => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); },
       })
     : new UnavailableAiProvider();
   app = await buildApp({
