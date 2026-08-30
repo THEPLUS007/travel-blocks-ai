@@ -38,3 +38,7 @@ Gemini가 지원하지 않는 JSON Schema keyword는 adapter에서 제거하지�
 ## Source pipeline
 
 Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 결정합니다. Plain text는 직접 정규화하고, public HTTP(S)는 DNS-pinned safe extractor를 거치며, YouTube는 일반 URL로 fetch하지 않고 explicit unsupported를 반환합니다. HTML은 parser로 script/style/noscript/nav noise를 제거한 뒤 AI input limit으로 자릅니다.
+
+## Grounded trip planning
+
+`POST /ai/generate-trip`의 public `{prompt}` contract는 유지됩니다. 내부에서는 `extractIntent` → destination/category 기반 Place retrieval → `TripPlanningInput` → structured Gemini planning → provider candidate canonicalization 순서로 실행합니다. AI가 verified candidate의 이름·주소·category를 바꾸더라도 provider 원본을 사용하며 후보에 없는 `verified:true` place는 invalid output으로 거부합니다.

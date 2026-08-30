@@ -64,6 +64,7 @@ export const PlaceRankingCandidateSchema = VerifiedPlaceSchema.extend({ candidat
 export const PlaceRankingInputSchema = z.object({ trip: TripSchema, day: TravelDaySchema, existingPlaces: z.array(TravelBlockSchema).max(100), candidates: z.array(PlaceRankingCandidateSchema).min(1).max(40) });
 export const PlaceRankingSelectionSchema = z.object({ candidateId: z.string().min(1).max(240), reason: z.string().trim().min(1).max(500) });
 export const PlaceRankingResultSchema = z.object({ selections: z.array(PlaceRankingSelectionSchema).max(5) });
+export const TripPlanningInputSchema = z.object({ prompt: z.string().trim().min(1).max(6000), intent: TravelIntentSchema, candidates: z.array(PlaceRankingCandidateSchema).max(40) });
 
 export type TripFormData = z.infer<typeof TripSchema>;
 export type TravelBlock = z.infer<typeof TravelBlockSchema>;
@@ -82,6 +83,7 @@ export type PlaceSearchInput = z.infer<typeof PlaceSearchInputSchema>;
 export type PlaceRankingCandidate = z.infer<typeof PlaceRankingCandidateSchema>;
 export type PlaceRankingInput = z.infer<typeof PlaceRankingInputSchema>;
 export type PlaceRankingResult = z.infer<typeof PlaceRankingResultSchema>;
+export type TripPlanningInput = z.infer<typeof TripPlanningInputSchema>;
 export type PriceLevel = z.infer<typeof PriceLevelSchema>;
 export type TravelBlockCategory = z.infer<typeof TravelBlockCategorySchema>;
 export type TransportMode = z.infer<typeof TransportModeSchema>;

@@ -5,11 +5,13 @@ import {
   PlaceRankingInputSchema,
   PlaceRankingResultSchema,
   TravelIntentSchema,
+  TripPlanningInputSchema,
   type AnalyzeTextInput,
   type GenerateTripInput,
   type PlaceRankingInput,
   type PlaceRankingResult,
   type TravelIntent,
+  type TripPlanningInput,
   type TravelPlanDraft,
 } from '@travel-blocks/shared';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
@@ -22,6 +24,7 @@ import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 
 export interface TravelAiProvider {
   extractIntent(input: GenerateTripInput): Promise<TravelIntent>;
+  planTrip(input: TripPlanningInput): Promise<TravelPlanDraft>;
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft>;
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft>;
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult>;
@@ -74,6 +77,11 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
 
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft> {
     const parsed = GenerateTripRequestSchema.parse(input);
+    return this.planTrip({ prompt: parsed.prompt, intent: { preferences: [], avoidances: [], requestedCategories: [] }, candidates: [] });
+  }
+
+  planTrip(input: TripPlanningInput): Promise<TravelPlanDraft> {
+    const parsed = TripPlanningInputSchema.parse(input);
     return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema, this.model);
   }
 

@@ -16,6 +16,7 @@ import {
 import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
+import { buildTripPlanningInput, groundPlanWithCandidates, retrieveIntentCandidates } from './planning.js';
 import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from './recommendations.js';
 import { SourcePipelineError, TravelSourcePipeline } from './sources.js';
 import type { TripRepository } from './repository.js';
@@ -105,8 +106,13 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
       ? reply.code(204).send()
       : fail(reply, request, 'NOT_FOUND', '여행 일정을 찾을 수 없습니다.'));
 
-  app.post('/api/v1/ai/generate-trip', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) =>
-    deps.ai.generateTrip(GenerateTripRequestSchema.parse(request.body)));
+  app.post('/api/v1/ai/generate-trip', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) => {
+    const input = GenerateTripRequestSchema.parse(request.body);
+    const intent = await deps.ai.extractIntent(input);
+    const candidates = await retrieveIntentCandidates(deps.places, intent);
+    const plan = await deps.ai.planTrip(buildTripPlanningInput(input.prompt, intent, candidates));
+    return groundPlanWithCandidates(plan, candidates);
+  });
   app.post('/api/v1/ai/analyze-source', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) => {
     const { input } = AnalyzeSourceRequestSchema.parse(request.body);
     const source = await (deps.sources ?? new TravelSourcePipeline()).process(input);

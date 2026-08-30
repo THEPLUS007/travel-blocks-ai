@@ -1,5 +1,5 @@
 import { AiProviderError, GeminiTravelAiProvider, type TravelAiProvider } from '@travel-blocks/ai';
-import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TravelPlanDraft } from '@travel-blocks/shared';
+import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TripPlanningInput, TravelPlanDraft } from '@travel-blocks/shared';
 import { AnonymousSessionAuth } from './auth.js';
 import { buildApp } from './app.js';
 import { loadApiConfig } from './config.js';
@@ -11,6 +11,7 @@ class UnavailableAiProvider implements TravelAiProvider {
   private unavailable(): never { throw new AiProviderError('auth', false); }
   async extractIntent(_input: GenerateTripInput): Promise<TravelIntent> { return this.unavailable(); }
   async generateTrip(_input: GenerateTripInput): Promise<TravelPlanDraft> { return this.unavailable(); }
+  async planTrip(_input: TripPlanningInput): Promise<TravelPlanDraft> { return this.unavailable(); }
   async analyzeText(_input: AnalyzeTextInput): Promise<TravelPlanDraft> { return this.unavailable(); }
   async rankPlaces(_input: PlaceRankingInput): Promise<PlaceRankingResult> { return this.unavailable(); }
 }
