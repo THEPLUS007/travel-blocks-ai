@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('real-mode smoke: generate, recommend, save, reopen, connect, refresh', async ({ page }) => {
+test('app contract smoke with test providers: generate, recommend, save, reopen, connect, refresh', async ({ page }) => {
   await page.addInitScript(() => window.localStorage.clear());
 
   await page.goto('/');
