@@ -1,0 +1,25 @@
+import { describe, expect, it } from 'vitest';
+import { SafeHttpSourceExtractor, SourcePipelineError, TravelSourcePipeline, classifySource, isPublicAddress, type Resolver, type Transport } from '../src/sources.js';
+const resolver = (address='93.184.216.34'):Resolver => async()=>[{address,family:address.includes(':')?6:4}];
+const stream=(text:string)=>({async *[Symbol.asyncIterator](){yield new TextEncoder().encode(text)}});
+const response=(status:number,headers:Record<string,string>,body=''):ReturnType<Transport>=>Promise.resolve({status,headers,body:stream(body)});
+
+describe('source router',()=>{
+  it('plain text, public URL, YouTube를 deterministic하게 구분한다',()=>{expect(classifySource('서울 여행').type).toBe('text');expect(classifySource('https://example.com/a').type).toBe('url');expect(classifySource('https://youtu.be/x').type).toBe('youtube');expect(classifySource('https://www.youtube.com/watch?v=x').type).toBe('youtube')});
+  it('invalid protocol과 credential URL을 거부한다',()=>{expect(()=>classifySource('ftp://example.com/a')).toThrow(SourcePipelineError);expect(()=>classifySource('https://user:pass@example.com')).toThrow(SourcePipelineError);expect(()=>classifySource('http://')).toThrow(SourcePipelineError)});
+  it('YouTube는 일반 extractor로 보내지 않고 unsupported다',async()=>expect(new TravelSourcePipeline().process('https://youtube.com/watch?v=x')).rejects.toMatchObject({code:'SOURCE_UNSUPPORTED'}));
+});
+describe('SSRF address policy',()=>{
+  it.each(['127.0.0.1','10.0.0.1','172.16.0.1','192.168.1.1','169.254.169.254','0.0.0.0','224.0.0.1','::1','fc00::1','fe80::1','::ffff:127.0.0.1','::ffff:7f00:1'])('%s를 차단한다',(ip)=>expect(isPublicAddress(ip)).toBe(false));
+  it('public IPv4를 허용한다',()=>expect(isPublicAddress('93.184.216.34')).toBe(true));
+});
+describe('SafeHttpSourceExtractor',()=>{
+  it('HTML noise를 제거하고 main text를 normalize한다',async()=>{const extractor=new SafeHttpSourceExtractor({resolver:resolver(),transport:async()=>response(200,{'content-type':'text/html'},'<html><head><title> Trip </title><style>x</style></head><body><nav>menu</nav><main> Seoul   food <script>bad</script></main></body></html>')});await expect(extractor.extract(new URL('https://example.com'))).resolves.toMatchObject({title:'Trip',content:'Trip Seoul food'})});
+  it('plain text를 처리하고 빈 본문은 거부한다',async()=>{const ok=new SafeHttpSourceExtractor({resolver:resolver(),transport:async()=>response(200,{'content-type':'text/plain'},' hello  world ')});await expect(ok.extract(new URL('https://example.com'))).resolves.toMatchObject({content:'hello world'});const empty=new SafeHttpSourceExtractor({resolver:resolver(),transport:async()=>response(200,{'content-type':'text/html'},'<script>x</script>')});await expect(empty.extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_EMPTY'})});
+  it('DNS private destination을 차단한다',async()=>expect(new SafeHttpSourceExtractor({resolver:resolver('127.0.0.1')}).extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_UNSAFE_URL'}));
+  it('redirect destination을 다시 검증한다',async()=>{const extractor=new SafeHttpSourceExtractor({resolver:async(host)=>[{address:host==='private.test'?'10.0.0.1':'93.184.216.34',family:4}],transport:async()=>response(302,{location:'http://private.test/metadata'})});await expect(extractor.extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_UNSAFE_URL'})});
+  it('redirect loop를 차단한다',async()=>{const extractor=new SafeHttpSourceExtractor({resolver:resolver(),transport:async()=>response(302,{location:'/loop'})});await expect(extractor.extract(new URL('https://example.com/loop'))).rejects.toMatchObject({code:'SOURCE_UNAVAILABLE'})});
+  it('timeout을 분류한다',async()=>{const transport:Transport=(_u,_a,signal)=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('x','AbortError'))));await expect(new SafeHttpSourceExtractor({resolver:resolver(),transport,timeoutMs:1}).extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_FETCH_TIMEOUT'})});
+  it('content length와 streaming size limit을 적용한다',async()=>{const declared=new SafeHttpSourceExtractor({resolver:resolver(),maxBytes:3,transport:async()=>response(200,{'content-type':'text/plain','content-length':'4'},'abcd')});await expect(declared.extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_TOO_LARGE'});const streamed=new SafeHttpSourceExtractor({resolver:resolver(),maxBytes:3,transport:async()=>response(200,{'content-type':'text/plain'},'abcd')});await expect(streamed.extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_TOO_LARGE'})});
+  it('unsupported content type을 거부한다',async()=>expect(new SafeHttpSourceExtractor({resolver:resolver(),transport:async()=>response(200,{'content-type':'application/pdf'},'pdf')}).extract(new URL('https://example.com'))).rejects.toMatchObject({code:'SOURCE_CONTENT_TYPE_UNSUPPORTED'}));
+});

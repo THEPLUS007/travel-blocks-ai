@@ -120,5 +120,3 @@ function classifyPlaceResponse(status: number): PlaceProviderError {
   return new PlaceProviderError('bad_request', false, status);
 }
 
-export interface ExtractedSource { title: string; content: string; canonicalUrl: string }
-export interface SourceExtractor { supports(url: URL): boolean; extract(url: URL): Promise<ExtractedSource> }

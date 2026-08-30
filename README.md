@@ -15,9 +15,10 @@ Day와 Travel Block 단위로 여행 일정을 편집하고 PostgreSQL에 영구
 - task별 prompt, Gemini JSON Schema structured output, Zod 재검증
 - provider 검증 장소만 추천 블록으로 반환
 - Google Places API (New) server-side Text Search와 Place Details
+- SSRF 방어가 적용된 public HTML/text source 분석
 - 저장하지 않은 변경 경고와 내보내기
 
-YouTube 자막/블로그 크롤링, 다중 장소 provider 선택, 로그인 UI, 예약·결제는 지원하지 않습니다. production AI 실패는 Mock 일정이 아니라 503 오류입니다.
+YouTube 자막 추출, 다중 장소 provider 선택, 로그인 UI, 예약·결제는 지원하지 않습니다. production AI 실패는 Mock 일정이 아니라 503 오류입니다.
 
 ## 개발 및 E2E
 

@@ -1,3 +1,3 @@
 # Product scope
 
-이번 단계의 범위는 편집 UI 보존, 영구 저장, 사용자 격리, API/AI/장소 provider 경계와 검증 가능한 테스트 기반입니다. 임의 URL 수집, 다중 장소 provider 선택, 완전한 로그인, 예약·결제·가격 비교·협업은 포함하지 않습니다. 추천은 provider가 실제 장소로 확인한 후보만 블록으로 반환합니다.
+이번 단계의 범위는 편집 UI 보존, 영구 저장, 사용자 격리, API/AI/장소 provider 경계와 검증 가능한 테스트 기반입니다. safe public URL 분석을 지원하며 YouTube transcript, 다중 장소 provider 선택, 완전한 로그인, 예약·결제·가격 비교·협업은 포함하지 않습니다. 추천은 provider가 실제 장소로 확인한 후보만 블록으로 반환합니다.

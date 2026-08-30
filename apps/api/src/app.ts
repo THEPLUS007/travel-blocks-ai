@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import {
   AnalyzeTextRequestSchema,
+  AnalyzeSourceRequestSchema,
   CreateTripRequestSchema,
   GenerateTripRequestSchema,
   PlaceSearchInputSchema,
@@ -16,6 +17,7 @@ import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
 import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from './recommendations.js';
+import { SourcePipelineError, TravelSourcePipeline } from './sources.js';
 import type { TripRepository } from './repository.js';
 
 export interface AppDependencies {
@@ -23,6 +25,7 @@ export interface AppDependencies {
   auth: AuthProvider;
   ai: TravelAiProvider;
   places: PlaceSearchProvider;
+  sources?: TravelSourcePipeline;
   readiness?: () => Promise<void>;
   logger?: boolean;
   trustProxy?: boolean;
@@ -48,6 +51,11 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) return fail(reply, request, 'INVALID_REQUEST', '요청 형식이 올바르지 않습니다.');
+    if (error instanceof SourcePipelineError) {
+      const status = error.code === 'SOURCE_FETCH_TIMEOUT' || error.code === 'SOURCE_UNAVAILABLE' ? 503 : error.code === 'SOURCE_TOO_LARGE' ? 413 : 400;
+      const message = error.code === 'SOURCE_UNSUPPORTED' ? '이 소스 유형은 아직 지원하지 않습니다.' : error.code === 'SOURCE_TOO_LARGE' ? '소스 콘텐츠가 너무 큽니다.' : error.code === 'SOURCE_FETCH_TIMEOUT' ? '소스 가져오기 시간이 초과되었습니다.' : error.code === 'SOURCE_UNAVAILABLE' ? '소스 콘텐츠를 가져올 수 없습니다.' : '안전하게 분석할 수 없는 소스입니다.';
+      return fail(reply, request, error.code, message, error.retryable, status);
+    }
     if (error instanceof PlaceProviderError) {
       const status = error.code === 'rate_limit' ? 429 : error.code === 'bad_request' ? 400 : error.code === 'not_found' ? 404 : 503;
       const code = error.code === 'rate_limit' ? 'PLACE_PROVIDER_RATE_LIMIT' : error.code === 'not_found' ? 'PLACE_NOT_FOUND' : 'PLACE_PROVIDER_UNAVAILABLE';
@@ -99,6 +107,11 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
 
   app.post('/api/v1/ai/generate-trip', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) =>
     deps.ai.generateTrip(GenerateTripRequestSchema.parse(request.body)));
+  app.post('/api/v1/ai/analyze-source', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) => {
+    const { input } = AnalyzeSourceRequestSchema.parse(request.body);
+    const source = await (deps.sources ?? new TravelSourcePipeline()).process(input);
+    return deps.ai.analyzeText({ content: source.content });
+  });
   app.post('/api/v1/ai/analyze-text', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) =>
     deps.ai.analyzeText(AnalyzeTextRequestSchema.parse(request.body)));
   app.post('/api/v1/ai/recommendations', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request) => {

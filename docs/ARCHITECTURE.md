@@ -34,3 +34,7 @@ Shared Zod schema
 ```
 
 Gemini가 지원하지 않는 JSON Schema keyword는 adapter에서 제거하지만 application contract는 shared Zod schema가 계속 source of truth입니다.
+
+## Source pipeline
+
+Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 결정합니다. Plain text는 직접 정규화하고, public HTTP(S)는 DNS-pinned safe extractor를 거치며, YouTube는 일반 URL로 fetch하지 않고 explicit unsupported를 반환합니다. HTML은 parser로 script/style/noscript/nav noise를 제거한 뒤 AI input limit으로 자릅니다.

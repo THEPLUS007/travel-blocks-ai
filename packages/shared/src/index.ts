@@ -39,6 +39,7 @@ export const CreateTripRequestSchema = TripWriteSchema;
 export const UpdateTripRequestSchema = TripWriteSchema.extend({ version: z.number().int().positive() });
 export const GenerateTripRequestSchema = z.object({ prompt: z.string().trim().min(1).max(6000) });
 export const AnalyzeTextRequestSchema = z.object({ content: z.string().trim().min(1).max(12000) });
+export const AnalyzeSourceRequestSchema = z.object({ input: z.string().trim().min(1).max(12000) });
 export const RecommendationRequestSchema = z.object({ trip: TripSchema, day: TravelDaySchema, existingPlaces: z.array(TravelBlockSchema).max(100).default([]) });
 export const GenerateTripResponseSchema = z.object({ trip: TripSchema, days: z.array(TravelDaySchema), connections: z.array(TravelConnectionSchema).default([]) });
 export const RecommendationResponseSchema = z.array(TravelBlockSchema);

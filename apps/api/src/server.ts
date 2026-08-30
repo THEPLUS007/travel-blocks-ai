@@ -5,6 +5,7 @@ import { buildApp } from './app.js';
 import { loadApiConfig } from './config.js';
 import { GooglePlacesProvider, UnconfiguredPlaceProvider } from './places.js';
 import { checkDatabase, createPool, PostgresTripRepository } from './repository.js';
+import { TravelSourcePipeline } from './sources.js';
 
 class UnavailableAiProvider implements TravelAiProvider {
   private unavailable(): never { throw new AiProviderError('auth', false); }
@@ -60,6 +61,7 @@ try {
     auth: new AnonymousSessionAuth(repository, { secure: config.cookieSecure }),
     ai,
     places,
+    sources: new TravelSourcePipeline(),
     readiness: () => checkDatabase(pool),
     logger: true,
     trustProxy: config.trustProxy,
