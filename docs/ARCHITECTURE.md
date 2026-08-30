@@ -21,3 +21,16 @@ Public RecommendationRequest
 ```
 
 Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 factual 장소 데이터를 생성하지 않으며 candidate ID와 추천 이유만 반환합니다.
+
+## Structured AI output
+
+```text
+Shared Zod schema
+→ supported JSON Schema subset
+→ Gemini responseJsonSchema
+→ JSON parse
+→ same Zod schema validation
+→ ranking candidate semantic validation
+```
+
+Gemini가 지원하지 않는 JSON Schema keyword는 adapter에서 제거하지만 application contract는 shared Zod schema가 계속 source of truth입니다.

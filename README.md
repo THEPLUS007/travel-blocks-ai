@@ -12,6 +12,7 @@ Day와 Travel Block 단위로 여행 일정을 편집하고 PostgreSQL에 영구
 - PostgreSQL Trip CRUD, version 기반 optimistic concurrency, transaction 저장
 - 서버 발급 httpOnly 익명 세션과 사용자별 Trip 격리
 - Gemini adapter 기반 일정 생성·텍스트 분석·추천
+- task별 prompt, Gemini JSON Schema structured output, Zod 재검증
 - provider 검증 장소만 추천 블록으로 반환
 - Google Places API (New) server-side Text Search와 Place Details
 - 저장하지 않은 변경 경고와 내보내기

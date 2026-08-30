@@ -14,6 +14,8 @@ import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.
 import { buildGenerateTripPrompt } from './prompts/generateTrip.js';
 import { buildRankPlacesPrompt } from './prompts/rankPlaces.js';
 import type { TaskPrompt } from './prompts/common.js';
+import type { ZodType } from 'zod';
+import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 
 export interface TravelAiProvider {
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft>;
@@ -58,19 +60,26 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     this.fetcher = options.fetch ?? fetch;
   }
 
-  generateTrip(input: GenerateTripInput) {
+  generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft> {
     const parsed = GenerateTripRequestSchema.parse(input);
-    return this.request('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema);
+    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema);
   }
 
-  analyzeText(input: AnalyzeTextInput) {
+  analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
     const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request('analyze_travel_content', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema);
+    return this.request<TravelPlanDraft>('analyze_travel_content', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema);
   }
 
-  rankPlaces(input: PlaceRankingInput) {
+  async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
     const parsed = PlaceRankingInputSchema.parse(input);
-    return this.request('rank_places', buildRankPlacesPrompt(parsed), PlaceRankingResultSchema);
+    const result = await this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), PlaceRankingResultSchema);
+    const allowed = new Set(parsed.candidates.map((candidate) => candidate.candidateId));
+    const selected = new Set<string>();
+    for (const selection of result.selections) {
+      if (!allowed.has(selection.candidateId) || selected.has(selection.candidateId)) throw new AiProviderError('invalid_output', false);
+      selected.add(selection.candidateId);
+    }
+    return result;
   }
 
   private async slot<T>(task: () => Promise<T>): Promise<T> {
@@ -80,7 +89,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { return await task(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: string, prompt: TaskPrompt, schema: { parse: (value: unknown) => T }): Promise<T> {
+  private request<T>(task: string, prompt: TaskPrompt, schema: ZodType<T, any, any>): Promise<T> {
     const key = `${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
@@ -99,7 +108,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     return promise;
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: { parse: (value: unknown) => T }): Promise<T> {
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -107,7 +116,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.options.apiKey },
         signal: controller.signal,
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json' } }),
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json', responseJsonSchema: toGeminiResponseJsonSchema(schema) } }),
       });
       if (!response.ok) throw classify(response.status);
       const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
