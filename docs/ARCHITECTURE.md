@@ -42,3 +42,9 @@ Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 �
 ## Grounded trip planning
 
 `POST /ai/generate-trip`의 public `{prompt}` contract는 유지됩니다. 내부에서는 `extractIntent` → destination/category 기반 Place retrieval → `TripPlanningInput` → structured Gemini planning → provider candidate canonicalization 순서로 실행합니다. AI가 verified candidate의 이름·주소·category를 바꾸더라도 provider 원본을 사용하며 후보에 없는 `verified:true` place는 invalid output으로 거부합니다.
+
+## Itinerary constraint validation
+
+AI `generateTrip`과 `analyzeText` 결과는 API 응답 전에 `packages/domain`의 pure validator를 통과해야 합니다. Validator는 Day/Block/Connection ID와 참조 무결성, 순차 Day 번호, verified-place identity/candidate membership, 일정 밀도 상한을 검사하고 안정적인 machine-readable issue code를 생성합니다. 유효하지 않은 AI 결과는 provider 원문이나 내부 issue를 노출하지 않는 `ITINERARY_INVALID` API 오류로 변환됩니다.
+
+현재 provider/application 모델에는 경로 소요 시간과 영업시간 데이터가 없으므로 route feasibility와 opening-hours feasibility는 의도적으로 **DEFERRED**입니다. 구현되지 않은 검증을 완료된 것으로 간주하지 않습니다.

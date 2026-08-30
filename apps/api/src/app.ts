@@ -14,6 +14,7 @@ import {
   UpdateTripRequestSchema,
 } from '@travel-blocks/shared';
 import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
+import { assertValidItinerary, ItineraryValidationError } from '@travel-blocks/domain';
 import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
 import { buildTripPlanningInput, groundPlanWithCandidates, retrieveIntentCandidates } from './planning.js';
@@ -52,6 +53,7 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) return fail(reply, request, 'INVALID_REQUEST', '요청 형식이 올바르지 않습니다.');
+    if (error instanceof ItineraryValidationError) return fail(reply, request, 'ITINERARY_INVALID', '일정 구조가 유효하지 않습니다.', false, 422);
     if (error instanceof SourcePipelineError) {
       const status = error.code === 'SOURCE_FETCH_TIMEOUT' || error.code === 'SOURCE_UNAVAILABLE' ? 503 : error.code === 'SOURCE_TOO_LARGE' ? 413 : 400;
       const message = error.code === 'SOURCE_UNSUPPORTED' ? '이 소스 유형은 아직 지원하지 않습니다.' : error.code === 'SOURCE_TOO_LARGE' ? '소스 콘텐츠가 너무 큽니다.' : error.code === 'SOURCE_FETCH_TIMEOUT' ? '소스 가져오기 시간이 초과되었습니다.' : error.code === 'SOURCE_UNAVAILABLE' ? '소스 콘텐츠를 가져올 수 없습니다.' : '안전하게 분석할 수 없는 소스입니다.';
@@ -111,15 +113,17 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     const intent = await deps.ai.extractIntent(input);
     const candidates = await retrieveIntentCandidates(deps.places, intent);
     const plan = await deps.ai.planTrip(buildTripPlanningInput(input.prompt, intent, candidates));
-    return groundPlanWithCandidates(plan, candidates);
+    const grounded = groundPlanWithCandidates(plan, candidates);
+    const verifiedCandidateIds = new Set(candidates.map((candidate) => candidate.provider + ':' + candidate.providerPlaceId));
+    return assertValidItinerary(grounded, { verifiedCandidateIds });
   });
   app.post('/api/v1/ai/analyze-source', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) => {
     const { input } = AnalyzeSourceRequestSchema.parse(request.body);
     const source = await (deps.sources ?? new TravelSourcePipeline()).process(input);
-    return deps.ai.analyzeText({ content: source.content });
+    return assertValidItinerary(await deps.ai.analyzeText({ content: source.content }), { verifiedCandidateIds: new Set() });
   });
   app.post('/api/v1/ai/analyze-text', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request) =>
-    deps.ai.analyzeText(AnalyzeTextRequestSchema.parse(request.body)));
+    assertValidItinerary(await deps.ai.analyzeText(AnalyzeTextRequestSchema.parse(request.body)), { verifiedCandidateIds: new Set() }));
   app.post('/api/v1/ai/recommendations', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request) => {
     const input = RecommendationRequestSchema.parse(request.body);
     const candidates = await retrievePlaceCandidates(deps.places, input);

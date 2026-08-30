@@ -28,3 +28,5 @@ export function validateConnection(days: TravelDay[], connection: TravelConnecti
 }
 
 export function normalizePlan(days: TravelDay[], connections: TravelConnection[]) { const normalizedDays = renumberDays(days); return { days: normalizedDays, connections: cleanupConnections(normalizedDays, connections) }; }
+
+export * from './itineraryValidation.js';
