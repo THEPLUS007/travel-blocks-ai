@@ -4,20 +4,24 @@ import {
   GenerateTripResponseSchema,
   PlaceRankingInputSchema,
   PlaceRankingResultSchema,
+  TravelIntentSchema,
   type AnalyzeTextInput,
   type GenerateTripInput,
   type PlaceRankingInput,
   type PlaceRankingResult,
+  type TravelIntent,
   type TravelPlanDraft,
 } from '@travel-blocks/shared';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import { buildGenerateTripPrompt } from './prompts/generateTrip.js';
+import { buildExtractIntentPrompt } from './prompts/extractIntent.js';
 import { buildRankPlacesPrompt } from './prompts/rankPlaces.js';
 import type { TaskPrompt } from './prompts/common.js';
 import type { ZodType } from 'zod';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 
 export interface TravelAiProvider {
+  extractIntent(input: GenerateTripInput): Promise<TravelIntent>;
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft>;
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft>;
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult>;
@@ -34,6 +38,7 @@ export class AiProviderError extends Error {
 export interface GeminiProviderOptions {
   apiKey: string;
   model?: string;
+  intentModel?: string;
   timeoutMs?: number;
   maxRetries?: number;
   maxConcurrency?: number;
@@ -45,6 +50,7 @@ const classify = (status: number) => status === 429 ? new AiProviderError('rate_
 
 export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly model: string;
+  private readonly intentModel: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly fetcher: typeof fetch;
@@ -55,24 +61,30 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   constructor(private readonly options: GeminiProviderOptions) {
     if (!options.apiKey) throw new AiProviderError('auth', false);
     this.model = options.model ?? 'gemini-3.5-flash';
+    this.intentModel = options.intentModel ?? this.model;
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxRetries = options.maxRetries ?? 2;
     this.fetcher = options.fetch ?? fetch;
   }
 
+  extractIntent(input: GenerateTripInput): Promise<TravelIntent> {
+    const parsed = GenerateTripRequestSchema.parse(input);
+    return this.request<TravelIntent>('extract_intent', buildExtractIntentPrompt(parsed), TravelIntentSchema, this.intentModel);
+  }
+
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft> {
     const parsed = GenerateTripRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema);
+    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema, this.model);
   }
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
     const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('analyze_travel_content', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema);
+    return this.request<TravelPlanDraft>('analyze_travel_content', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model);
   }
 
   async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
     const parsed = PlaceRankingInputSchema.parse(input);
-    const result = await this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), PlaceRankingResultSchema);
+    const result = await this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), PlaceRankingResultSchema, this.model);
     const allowed = new Set(parsed.candidates.map((candidate) => candidate.candidateId));
     const selected = new Set<string>();
     for (const selection of result.selections) {
@@ -89,14 +101,14 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { return await task(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: string, prompt: TaskPrompt, schema: ZodType<T, any, any>): Promise<T> {
-    const key = `${task}:${prompt.userData}`;
+  private request<T>(task: string, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
+    const key = `${model}:${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
     const promise = this.slot(async () => {
       let last: unknown;
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-        try { return await this.call(prompt, schema); } catch (error) {
+        try { return await this.call(prompt, schema, model); } catch (error) {
           last = error;
           if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries) throw error;
           await wait(Math.min(250 * 2 ** attempt, 2000));
@@ -108,11 +120,11 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     return promise;
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>): Promise<T> {
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await this.fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`, {
+      const response = await this.fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.options.apiKey },
         signal: controller.signal,

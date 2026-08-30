@@ -1,0 +1,8 @@
+import { describe,expect,it,vi } from 'vitest';
+import { GeminiTravelAiProvider } from '../src/index.js';
+const gemini=(value:unknown)=>new Response(JSON.stringify({candidates:[{content:{parts:[{text:typeof value==='string'?value:JSON.stringify(value)}]}}]}));
+describe('intent extraction',()=>{
+ it('destination, duration, budget, companion, preference와 avoidance를 structured output으로 추출한다',async()=>{let body:any;const output={destination:{country:'일본',city:'오사카'},durationDays:3,travelers:{companionType:'친구'},budget:{amount:500000,currency:'KRW',originalText:'50만원'},preferences:['음식'],avoidances:['긴 도보'],mobilityPreference:'minimal_walking',requestedCategories:['food']};const provider=new GeminiTravelAiProvider({apiKey:'x',model:'planning',intentModel:'intent-fast',fetch:vi.fn(async(url,init)=>{expect(String(url)).toContain('/intent-fast:generateContent');body=JSON.parse(String(init?.body));return gemini(output)})});await expect(provider.extractIntent({prompt:'친구와 오사카 3일 50만원 음식 여행, 긴 도보 제외'})).resolves.toEqual(output);expect(body.generationConfig.responseJsonSchema).toMatchObject({type:'object'});expect(body.systemInstruction.parts[0].text).toContain('Do not invent')});
+ it('없는 필드는 발명하지 않고 defaults만 적용한다',async()=>{const provider=new GeminiTravelAiProvider({apiKey:'x',fetch:async()=>gemini({})});await expect(provider.extractIntent({prompt:'친구들이랑 일본 갈래'})).resolves.toEqual({preferences:[],avoidances:[],requestedCategories:[]})});
+ it('malformed intent output을 차단한다',async()=>{const provider=new GeminiTravelAiProvider({apiKey:'x',fetch:async()=>gemini('{bad')});await expect(provider.extractIntent({prompt:'서울'})).rejects.toMatchObject({code:'invalid_output'})});
+});

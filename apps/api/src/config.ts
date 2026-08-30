@@ -55,6 +55,7 @@ export interface ApiConfig {
   googlePlacesApiKey?: string;
   googlePlacesTimeoutMs: number;
   geminiModel: string;
+  geminiIntentModel: string;
   geminiTimeoutMs: number;
   geminiMaxRetries: number;
   geminiMaxConcurrency: number;
@@ -91,6 +92,7 @@ export function loadApiConfig(): ApiConfig {
     googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || undefined,
     googlePlacesTimeoutMs: integer('GOOGLE_PLACES_TIMEOUT_MS', 10_000, 1000, 120_000),
     geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+    geminiIntentModel: process.env.GEMINI_INTENT_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiTimeoutMs: integer('GEMINI_TIMEOUT_MS', 15_000, 1000, 120_000),
     geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 5),
     geminiMaxConcurrency: integer('GEMINI_MAX_CONCURRENCY', 2, 1, 20),

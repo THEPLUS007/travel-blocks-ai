@@ -11,3 +11,5 @@ AI 작업은 `generateTrip`, `analyzeTravelContent`, `rankPlaces` 전용 prompt 
 추천은 Place provider가 서버 내부에서 검증 후보를 검색한 뒤 AI가 후보 ID와 이유만 선택합니다. 클라이언트는 후보 목록을 제공할 수 없고, 장소명·주소·좌표·provider ID는 AI 결과가 아니라 원래 `VerifiedPlace`에서 최종 TravelBlock으로 합성합니다.
 
 세 작업 모두 `@travel-blocks/shared` Zod response schema를 `zod-to-json-schema`로 변환해 Gemini `generationConfig.responseJsonSchema`에 전달합니다. Gemini가 지원하는 JSON Schema subset만 전송하며, unsupported keyword는 제거합니다. 동일한 Zod schema로 응답을 다시 검증하므로 structured output을 application validation의 대체물로 간주하지 않습니다. Ranking은 추가로 unknown/duplicate candidate ID와 5개 초과 선택을 거부하며 empty selection은 허용합니다.
+
+`extractIntent`는 `TravelIntent` Zod schema와 structured output을 사용해 명시적 또는 강하게 뒷받침되는 destination, duration, travelers, budget, preferences, avoidances, mobility, categories만 추출합니다. `GEMINI_INTENT_MODEL`이 있으면 intent task에만 사용하고 없으면 `GEMINI_MODEL`로 fallback합니다.

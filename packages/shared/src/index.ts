@@ -38,6 +38,16 @@ export const TripWriteSchema = z.object({ trip: TripSchema, days: z.array(Travel
 export const CreateTripRequestSchema = TripWriteSchema;
 export const UpdateTripRequestSchema = TripWriteSchema.extend({ version: z.number().int().positive() });
 export const GenerateTripRequestSchema = z.object({ prompt: z.string().trim().min(1).max(6000) });
+export const TravelIntentSchema = z.object({
+  destination: z.object({ country: z.string().trim().min(1).max(80).optional(), city: z.string().trim().min(1).max(80).optional(), region: z.string().trim().min(1).max(80).optional() }).optional(),
+  durationDays: z.number().int().positive().max(60).optional(),
+  travelers: z.object({ count: z.number().int().positive().max(100).optional(), companionType: z.string().trim().min(1).max(80).optional() }).optional(),
+  budget: z.object({ amount: z.number().nonnegative().optional(), currency: z.string().trim().length(3).optional(), originalText: z.string().trim().min(1).max(120).optional() }).optional(),
+  preferences: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  avoidances: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  mobilityPreference: z.enum(['walk','minimal_walking','public_transit','car','accessible']).optional(),
+  requestedCategories: z.array(TravelBlockCategorySchema).max(6).default([]),
+});
 export const AnalyzeTextRequestSchema = z.object({ content: z.string().trim().min(1).max(12000) });
 export const AnalyzeSourceRequestSchema = z.object({ input: z.string().trim().min(1).max(12000) });
 export const RecommendationRequestSchema = z.object({ trip: TripSchema, day: TravelDaySchema, existingPlaces: z.array(TravelBlockSchema).max(100).default([]) });
@@ -62,6 +72,7 @@ export type TravelConnection = z.infer<typeof TravelConnectionSchema>;
 export type SavedTravelPlan = z.infer<typeof SavedTravelPlanSchema>;
 export type TravelPlanPayload = z.infer<typeof TripWriteSchema>;
 export type GenerateTripInput = z.infer<typeof GenerateTripRequestSchema>;
+export type TravelIntent = z.infer<typeof TravelIntentSchema>;
 export type AnalyzeTextInput = z.infer<typeof AnalyzeTextRequestSchema>;
 export type RecommendationInput = z.infer<typeof RecommendationRequestSchema>;
 export type RecommendationDraft = TravelBlock;
