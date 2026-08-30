@@ -46,9 +46,13 @@ export const ApiErrorSchema = z.object({ error: z.object({ code: z.string(), mes
 
 export const VerifiedPlaceSchema = z.object({
   provider: z.string(), providerPlaceId: z.string(), name: z.string(), formattedAddress: z.string(), latitude: z.number(), longitude: z.number(),
-  category: z.string(), city: z.string(), region: z.string(),
+  category: TravelBlockCategorySchema, city: z.string(), region: z.string(),
 });
 export const PlaceSearchInputSchema = z.object({ query: z.string().trim().min(1).max(200), city: z.string().max(80).optional(), region: z.string().max(80).optional(), category: z.string().max(80).optional() });
+export const PlaceRankingCandidateSchema = VerifiedPlaceSchema.extend({ candidateId: z.string().min(1).max(240) });
+export const PlaceRankingInputSchema = z.object({ trip: TripSchema, day: TravelDaySchema, existingPlaces: z.array(TravelBlockSchema).max(100), candidates: z.array(PlaceRankingCandidateSchema).min(1).max(40) });
+export const PlaceRankingSelectionSchema = z.object({ candidateId: z.string().min(1).max(240), reason: z.string().trim().min(1).max(500) });
+export const PlaceRankingResultSchema = z.object({ selections: z.array(PlaceRankingSelectionSchema).max(5) });
 
 export type TripFormData = z.infer<typeof TripSchema>;
 export type TravelBlock = z.infer<typeof TravelBlockSchema>;
@@ -63,6 +67,9 @@ export type RecommendationDraft = TravelBlock;
 export type TravelPlanDraft = z.infer<typeof GenerateTripResponseSchema>;
 export type VerifiedPlace = z.infer<typeof VerifiedPlaceSchema>;
 export type PlaceSearchInput = z.infer<typeof PlaceSearchInputSchema>;
+export type PlaceRankingCandidate = z.infer<typeof PlaceRankingCandidateSchema>;
+export type PlaceRankingInput = z.infer<typeof PlaceRankingInputSchema>;
+export type PlaceRankingResult = z.infer<typeof PlaceRankingResultSchema>;
 export type PriceLevel = z.infer<typeof PriceLevelSchema>;
 export type TravelBlockCategory = z.infer<typeof TravelBlockCategorySchema>;
 export type TransportMode = z.infer<typeof TransportModeSchema>;

@@ -15,6 +15,7 @@ import {
 import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
+import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from './recommendations.js';
 import type { TripRepository } from './repository.js';
 
 export interface AppDependencies {
@@ -102,18 +103,10 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     deps.ai.analyzeText(AnalyzeTextRequestSchema.parse(request.body)));
   app.post('/api/v1/ai/recommendations', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request) => {
     const input = RecommendationRequestSchema.parse(request.body);
-    const candidates = await deps.ai.recommendPlaces(input);
-    const verified = [];
-    const seen = new Set<string>();
-    for (const candidate of candidates) {
-      const place = (await deps.places.search({ query: candidate.title, city: input.day.city, region: input.day.region, category: candidate.category }))[0];
-      if (!place) continue;
-      const key = `${place.provider}:${place.providerPlaceId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      verified.push({ ...candidate, location: place.formattedAddress, place: { provider: place.provider, providerPlaceId: place.providerPlaceId, verified: true as const } });
-    }
-    return verified;
+    const candidates = await retrievePlaceCandidates(deps.places, input);
+    if (candidates.length === 0) return [];
+    const ranking = await deps.ai.rankPlaces(buildPlaceRankingInput(input, candidates));
+    return selectedPlacesToBlocks(candidates, ranking);
   });
   app.get('/api/v1/places/search', async (request) => deps.places.search(PlaceSearchInputSchema.parse(request.query)));
   app.get('/api/v1/places/:placeId', async (request, reply) =>
