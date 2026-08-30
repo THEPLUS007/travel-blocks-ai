@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GooglePlacesProvider, PlaceProviderError, UnconfiguredPlaceProvider, buildGooglePlacesTextQuery, mapGooglePlaceCategory } from '../src/places.js';
 
-const googlePlace = { id: 'place-1', displayName: { text: '경복궁' }, formattedAddress: '서울특별시 종로구', location: { latitude: 37.5796, longitude: 126.977 }, primaryType: 'tourist_attraction', types: ['museum'] };
+const googlePlace = { id: 'place-1', displayName: { text: '경복궁' }, formattedAddress: '서울특별시 종로구', location: { latitude: 37.5796, longitude: 126.977 }, primaryType: 'tourist_attraction', types: ['museum'], addressComponents: [{ longText: '서울', types: ['locality'] }, { longText: '서울특별시', types: ['administrative_area_level_1'] }] };
 const response = (body: unknown, status = 200) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 describe('GooglePlacesProvider', () => {
@@ -14,7 +14,7 @@ describe('GooglePlacesProvider', () => {
     const url = requestedUrl;
     const init = requestedInit;
     expect(url).toBe('https://places.googleapis.com/v1/places:searchText');
-    expect(init?.headers).toMatchObject({ 'X-Goog-Api-Key': 'server-key', 'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types' });
+    expect(init?.headers).toMatchObject({ 'X-Goog-Api-Key': 'server-key', 'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.addressComponents' });
     expect(JSON.parse(String(init?.body))).toEqual({ textQuery: '경복궁, 관광, 서울, 종로구', pageSize: 10 });
   });
 
@@ -23,7 +23,7 @@ describe('GooglePlacesProvider', () => {
     let requestedInit: RequestInit | undefined;
     const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => { requestedUrl = url; requestedInit = init; return response({ ...googlePlace, primaryType: 'restaurant' }); });
     const result = await new GooglePlacesProvider({ apiKey: 'key', fetch: fetcher }).getPlace('place/with space');
-    expect(result).toMatchObject({ providerPlaceId: 'place-1', category: 'food' });
+    expect(result).toMatchObject({ providerPlaceId: 'place-1', category: 'food', city: '서울', region: '서울특별시' });
     expect(requestedUrl).toBe('https://places.googleapis.com/v1/places/place%2Fwith%20space');
     expect(requestedInit?.method).toBe('GET');
   });

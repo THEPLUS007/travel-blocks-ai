@@ -28,6 +28,7 @@ const googlePlaceSchema = z.object({
   location: z.object({ latitude: z.number(), longitude: z.number() }),
   primaryType: z.string().optional(),
   types: z.array(z.string()).optional(),
+  addressComponents: z.array(z.object({ longText: z.string(), types: z.array(z.string()) })).optional(),
 });
 const searchResponseSchema = z.object({ places: z.array(googlePlaceSchema).optional().default([]) });
 
@@ -53,8 +54,8 @@ export function buildGooglePlacesTextQuery(input: PlaceSearchInput): string {
 }
 
 export interface GooglePlacesProviderOptions { apiKey: string; timeoutMs?: number; fetch?: typeof fetch }
-const searchFields = 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types';
-const detailsFields = 'id,displayName,formattedAddress,location,primaryType,types';
+const searchFields = 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.addressComponents';
+const detailsFields = 'id,displayName,formattedAddress,location,primaryType,types,addressComponents';
 
 export class GooglePlacesProvider implements PlaceSearchProvider {
   private readonly fetcher: typeof fetch;
@@ -88,10 +89,11 @@ export class GooglePlacesProvider implements PlaceSearchProvider {
   }
 
   private map(place: z.infer<typeof googlePlaceSchema>, context?: PlaceSearchInput): VerifiedPlace {
+    const component = (type: string) => place.addressComponents?.find((item) => item.types.includes(type))?.longText ?? '';
     return VerifiedPlaceSchema.parse({
       provider: 'google', providerPlaceId: place.id, name: place.displayName.text, formattedAddress: place.formattedAddress,
       latitude: place.location.latitude, longitude: place.location.longitude,
-      category: mapGooglePlaceCategory(place.primaryType, place.types), city: context?.city ?? '', region: context?.region ?? '',
+      category: mapGooglePlaceCategory(place.primaryType, place.types), city: context?.city ?? (component('locality') || component('administrative_area_level_2')), region: context?.region ?? component('administrative_area_level_1'),
     });
   }
 
