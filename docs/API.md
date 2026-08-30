@@ -15,3 +15,5 @@ Trip 생성은 `{ trip, days, connections }`, 수정은 여기에 현재 `versio
 ```json
 {"error":{"code":"ERROR_CODE","message":"사용자 메시지","retryable":false,"requestId":"..."}}
 ```
+
+Place provider 오류는 raw Google payload나 API key 없이 다음 application code로 변환합니다: rate limit은 `PLACE_PROVIDER_RATE_LIMIT`/429, 미설정·인증·timeout·network·provider 장애는 `PLACE_PROVIDER_UNAVAILABLE`/503입니다. 검색 결과 없음은 정상 빈 배열이며 Place Details의 없는 ID는 404입니다.

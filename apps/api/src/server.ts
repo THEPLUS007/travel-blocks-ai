@@ -3,7 +3,7 @@ import type { AnalyzeTextInput, GenerateTripInput, RecommendationDraft, Recommen
 import { AnonymousSessionAuth } from './auth.js';
 import { buildApp } from './app.js';
 import { loadApiConfig } from './config.js';
-import { UnconfiguredPlaceProvider } from './places.js';
+import { GooglePlacesProvider, UnconfiguredPlaceProvider } from './places.js';
 import { checkDatabase, createPool, PostgresTripRepository } from './repository.js';
 
 class UnavailableAiProvider implements TravelAiProvider {
@@ -43,6 +43,9 @@ async function shutdown(signal: string, exitCode = 0): Promise<void> {
 try {
   await checkDatabase(pool);
   const repository = new PostgresTripRepository(pool);
+  const places = config.googlePlacesApiKey
+    ? new GooglePlacesProvider({ apiKey: config.googlePlacesApiKey, timeoutMs: config.googlePlacesTimeoutMs })
+    : new UnconfiguredPlaceProvider();
   const ai: TravelAiProvider = config.geminiApiKey
     ? new GeminiTravelAiProvider({
         apiKey: config.geminiApiKey,
@@ -56,13 +59,13 @@ try {
     repository,
     auth: new AnonymousSessionAuth(repository, { secure: config.cookieSecure }),
     ai,
-    places: new UnconfiguredPlaceProvider(),
+    places,
     readiness: () => checkDatabase(pool),
     logger: true,
     trustProxy: config.trustProxy,
   });
   await app.listen({ host: config.host, port: config.port });
-  console.info(`[Server] ready port=${config.port} database=connected ai=${config.geminiApiKey ? 'configured' : 'unavailable'}`);
+  console.info(`[Server] ready port=${config.port} database=connected ai=${config.geminiApiKey ? 'configured' : 'unavailable'} places=${config.googlePlacesApiKey ? 'google' : 'unavailable'}`);
 } catch (error) {
   const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown';
   console.error(`[Server] startup failed code=${code}`);

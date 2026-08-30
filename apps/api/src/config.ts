@@ -52,6 +52,8 @@ export interface ApiConfig {
   trustProxy: boolean;
   webOrigin?: string;
   geminiApiKey?: string;
+  googlePlacesApiKey?: string;
+  googlePlacesTimeoutMs: number;
   geminiModel: string;
   geminiTimeoutMs: number;
   geminiMaxRetries: number;
@@ -86,6 +88,8 @@ export function loadApiConfig(): ApiConfig {
     trustProxy: boolean('TRUST_PROXY', false),
     webOrigin: process.env.WEB_ORIGIN || undefined,
     geminiApiKey: process.env.GEMINI_API_KEY || undefined,
+    googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || undefined,
+    googlePlacesTimeoutMs: integer('GOOGLE_PLACES_TIMEOUT_MS', 10_000, 1000, 120_000),
     geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiTimeoutMs: integer('GEMINI_TIMEOUT_MS', 15_000, 1000, 120_000),
     geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 5),

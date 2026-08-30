@@ -14,7 +14,7 @@ import {
 } from '@travel-blocks/shared';
 import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AuthProvider } from './auth.js';
-import type { PlaceSearchProvider } from './places.js';
+import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
 import type { TripRepository } from './repository.js';
 
 export interface AppDependencies {
@@ -47,6 +47,11 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) return fail(reply, request, 'INVALID_REQUEST', '요청 형식이 올바르지 않습니다.');
+    if (error instanceof PlaceProviderError) {
+      const status = error.code === 'rate_limit' ? 429 : error.code === 'bad_request' ? 400 : error.code === 'not_found' ? 404 : 503;
+      const code = error.code === 'rate_limit' ? 'PLACE_PROVIDER_RATE_LIMIT' : error.code === 'not_found' ? 'PLACE_NOT_FOUND' : 'PLACE_PROVIDER_UNAVAILABLE';
+      return fail(reply, request, code, error.code === 'rate_limit' ? '장소 검색 요청이 많아 잠시 후 다시 시도해 주세요.' : error.code === 'not_found' ? '장소를 찾을 수 없습니다.' : '현재 장소 검색을 사용할 수 없습니다.', error.retryable, status);
+    }
     if (error instanceof AiProviderError) {
       return fail(reply, request, 'AI_PROVIDER_UNAVAILABLE', '현재 AI 일정 생성이 지연되고 있습니다.', error.retryable, error.status === 429 ? 429 : 503);
     }

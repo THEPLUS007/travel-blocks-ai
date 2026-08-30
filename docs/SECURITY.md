@@ -24,3 +24,5 @@
 | `esbuild@0.18.20` | core-utils transitive | vulnerable development server는 production에서 사용하지 않음 | GHSA-67mh-4wv8-2f99의 non-breaking 상위 fix를 기다립니다. |
 
 `npm audit`이 제안하는 `drizzle-kit@0.18.1` 전환은 현재 버전보다 오래된 breaking downgrade이므로 적용하지 않습니다. 이 체인은 production install audit에는 포함되지 않으며 web/API production runtime이나 bundle에 포함되지 않습니다. Drizzle toolchain을 업데이트할 때 전체 audit을 다시 확인합니다.
+
+`GOOGLE_PLACES_API_KEY`는 API server 환경에서만 읽으며 frontend 환경변수, browser bundle, API response 또는 application log에 포함하지 않습니다. Google Places 응답은 Zod로 검증한 최소 application shape로만 변환합니다.
