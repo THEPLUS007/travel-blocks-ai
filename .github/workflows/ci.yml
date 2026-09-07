@@ -1,0 +1,99 @@
+name: Production validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - run: npm audit --omit=dev
+      - name: Shell syntax and operations regression
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python3 scripts/test-operations.py
+  e2e:
+    name: E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npx --no-install playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run test:e2e
+  postgres:
+    name: PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: travel_blocks_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d travel_blocks_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Ephemeral workflow-local credentials, never production secrets.
+      DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/travel_blocks_test
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: ci-only-password
+      GEMINI_API_KEY: ''
+      GOOGLE_PLACES_API_KEY: ''
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run migrate -w @travel-blocks/api
+      - run: npm run test:postgres
+      - name: Backup and restore into a separate database
+        run: |
+          export BACKUP_DIR="$RUNNER_TEMP/backups/travel-blocks-ai"
+          mkdir -p "$BACKUP_DIR"
+          chmod 700 "$BACKUP_DIR"
+          psql --dbname=travel_blocks_test -v ON_ERROR_STOP=1 -c "INSERT INTO users (session_hash) VALUES ('ci-restore-fixture');"
+          bash scripts/backup-postgres.sh
+          createdb --template=template0 dedicated_restore_test
+          pg_restore --exit-on-error --no-owner --no-privileges --dbname=dedicated_restore_test "$BACKUP_DIR"/*.dump
+          test "$(psql --dbname=dedicated_restore_test -Atc "SELECT count(*) FROM users WHERE session_hash = 'ci-restore-fixture'")" = 1
+      - name: Readiness and persistence against restored schema
+        run: npm run test:postgres
+        env:
+          DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/dedicated_restore_test
