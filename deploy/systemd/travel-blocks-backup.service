@@ -1,0 +1,21 @@
+[Unit]
+Description=Travel Blocks AI PostgreSQL backup
+Wants=postgresql.service
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=travel-blocks-backup
+Group=travel-blocks-backup
+WorkingDirectory=/srv/travel-blocks-ai/current
+EnvironmentFile=/etc/travel-blocks-ai/backup.env
+ExecStart=/bin/bash /srv/travel-blocks-ai/current/scripts/backup-postgres.sh
+TimeoutStartSec=1h
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/travel-blocks-ai
+StandardOutput=journal
+StandardError=journal

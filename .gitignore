@@ -11,3 +11,11 @@ submission*.zip
 *.tsbuildinfo
 .claude/
 .codex/
+
+# Operational secrets and database archives
+*.pem
+*.key
+*.crt
+*.dump
+*.backup
+backups/
