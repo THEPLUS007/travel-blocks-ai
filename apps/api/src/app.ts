@@ -65,6 +65,9 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
       return fail(reply, request, code, error.code === 'rate_limit' ? '장소 검색 요청이 많아 잠시 후 다시 시도해 주세요.' : error.code === 'not_found' ? '장소를 찾을 수 없습니다.' : '현재 장소 검색을 사용할 수 없습니다.', error.retryable, status);
     }
     if (error instanceof AiProviderError) {
+      if (error.code === 'invalid_output') {
+        return fail(reply, request, 'AI_INVALID_OUTPUT', 'AI가 유효한 일정 형식을 반환하지 않았습니다.', false, 502);
+      }
       return fail(reply, request, 'AI_PROVIDER_UNAVAILABLE', '현재 AI 일정 생성이 지연되고 있습니다.', error.retryable, error.status === 429 ? 429 : 503);
     }
     const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown';
