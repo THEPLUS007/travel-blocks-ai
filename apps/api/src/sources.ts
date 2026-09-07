@@ -81,7 +81,12 @@ export class SafeHttpSourceExtractor implements SourceExtractor {
         if ([301,302,303,307,308].includes(response.status)) {
           const location = header(response.headers, 'location');
           if (!location || redirects === this.maxRedirects) throw new SourcePipelineError('SOURCE_UNAVAILABLE');
-          const next = new URL(location, url); classifySource(next.href); url = next; continue;
+          const next = new URL(location, url);
+          const redirectedSource = classifySource(next.href);
+          if (redirectedSource.type === 'youtube') throw new SourcePipelineError('SOURCE_UNSUPPORTED');
+          if (redirectedSource.type !== 'url') throw new SourcePipelineError('SOURCE_INVALID');
+          url = next;
+          continue;
         }
         if (response.status < 200 || response.status >= 300) throw new SourcePipelineError('SOURCE_UNAVAILABLE', response.status >= 500);
         const contentType = (header(response.headers, 'content-type') ?? '').split(';')[0].trim().toLowerCase();
