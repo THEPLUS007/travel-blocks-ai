@@ -48,3 +48,7 @@ Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 �
 AI `generateTrip`과 `analyzeText` 결과는 API 응답 전에 `packages/domain`의 pure validator를 통과해야 합니다. Validator는 Day/Block/Connection ID와 참조 무결성, 순차 Day 번호, verified-place identity/candidate membership, 일정 밀도 상한을 검사하고 안정적인 machine-readable issue code를 생성합니다. 유효하지 않은 AI 결과는 provider 원문이나 내부 issue를 노출하지 않는 `ITINERARY_INVALID` API 오류로 변환됩니다.
 
 현재 provider/application 모델에는 경로 소요 시간과 영업시간 데이터가 없으므로 route feasibility와 opening-hours feasibility는 의도적으로 **DEFERRED**입니다. 구현되지 않은 검증을 완료된 것으로 간주하지 않습니다.
+
+## Production serving boundary
+
+Nginx가 HTTPS same-origin의 static web release와 `/api/*` reverse proxy를 담당합니다. Production Vite build는 root base(`/`)를 사용해 SPA nested route에서도 asset/API URL을 유지합니다. API는 systemd 아래 non-root로 `127.0.0.1:3000`에 bind하고 local PostgreSQL에 연결합니다. Repository `deploy/` template과 `scripts/`는 phase 5 적용을 준비하며 CI는 배포 없이 검증만 수행합니다.
