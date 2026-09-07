@@ -34,3 +34,7 @@
 ## AI telemetry privacy
 
 `ai_generation_runs`에는 prompt, 추출한 원문 콘텐츠, provider raw response, API key를 저장하지 않습니다. 운영 기록은 provider/model/task/status/latency/token count/error code로 제한하며 DB insert 오류 로그도 sanitized error code만 포함합니다.
+
+## Production operations
+
+API는 non-root systemd service로 loopback에만 bind합니다. 유일한 public edge인 Nginx는 client forwarding headers를 덮어쓰며 HTTPS cookie를 사용합니다. Helmet이 API header를 담당하고 HSTS는 Nginx가 HTTPS 검증 후 담당합니다. 인증·DB/provider secret은 root-owned mode-600 EnvironmentFile에서 전달하며 Git·unit 본문·명령 인자에 넣지 않습니다. Backup service는 별도 사용자와 별도 env를 사용합니다. mode-700 backup directory와 mode-600 archive, 안전한 retention, 별도 DB restore drill을 사용합니다. key/certificate/archive 파일은 Git ignore로 방어하며 release에는 tracked source와 build만 포함합니다. CI는 ephemeral DB credential만 사용하고 실제 provider secret을 요구하지 않습니다. 실제 적용 및 rollback 절차는 [Deployment](DEPLOYMENT.md)를 따릅니다.

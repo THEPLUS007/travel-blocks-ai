@@ -31,25 +31,17 @@ npm run dev:web
 
 `test:server`는 메모리 저장소와 test provider만 사용합니다.
 
-## PostgreSQL production
+## Production
 
-실제 값은 Git에서 무시되는 root `.env` 또는 서버 환경변수에만 설정합니다.
+Node 22에서 build한 API는 non-root systemd service로 `127.0.0.1:3000`에 bind하고, web `apps/web/dist`는 별도 release 디렉터리로 배포하여 Nginx가 HTTPS same-origin으로 제공합니다. `vite preview`와 web `serve` script는 로컬/Playwright 전용입니다.
 
-```bash
-npm ci
-npm run migrate -w @travel-blocks/api
-npm run build
-npm run start -w @travel-blocks/api
-# 별도 터미널
-npm run preview -w @travel-blocks/web
-```
+[Deployment runbook](docs/DEPLOYMENT.md)에 stable Node runtime, systemd, Nginx/HTTPS, DB backup/restore, deployment/rollback 절차가 있습니다. Repository template은 실제 host에 자동 설치되지 않습니다. `.github/workflows/ci.yml`은 Quality, app-contract E2E, ephemeral PostgreSQL backup/restore integration을 검증하며 production 자동 배포나 live billing API 호출은 하지 않습니다.
 
 - `GET /api/v1/health`: process liveness
 - `GET /api/v1/ready`: PostgreSQL readiness
-- DB 연결 실패 시 시작을 중단하며 Memory repository로 전환하지 않습니다.
-- 현재 HTTP proxy는 `COOKIE_SECURE=false`, HTTPS 운영은 `COOKIE_SECURE=true`를 사용합니다.
-- Gemini key가 없으면 CRUD는 동작하지만 AI endpoint는 503을 반환합니다.
-- `GOOGLE_PLACES_API_KEY`가 없으면 CRUD는 동작하지만 장소 endpoint와 추천은 503을 반환합니다.
+- DB 실패 시 Memory repository로 전환하지 않습니다.
+- HTTPS 운영은 `COOKIE_SECURE=true`, 신뢰할 수 있는 Nginx 뒤에서는 `TRUST_PROXY=true`입니다.
+- Gemini/Google Places key가 없으면 해당 provider 기능은 503을 반환하며 CRUD는 사용할 수 있습니다.
 
 ## 검증 명령
 
