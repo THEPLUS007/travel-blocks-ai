@@ -1,0 +1,33 @@
+[Unit]
+Description=Travel Blocks AI Fastify API
+Wants=network-online.target postgresql.service
+After=network-online.target postgresql.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=travel-blocks
+Group=travel-blocks
+WorkingDirectory=/srv/travel-blocks-ai/current
+EnvironmentFile=/etc/travel-blocks-ai/travel-blocks-ai.env
+Environment=NODE_ENV=production
+# Provision this stable Node 22 path in phase 5; never use npx or shell init.
+ExecStartPre=/opt/node22/bin/node -e "const [major, minor] = process.versions.node.split('.').map(Number); if (major !== 22 || minor < 12) process.exit(1)"
+ExecStart=/opt/node22/bin/node apps/api/dist/server.js
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStartSec=30
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=travel-blocks-api
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
