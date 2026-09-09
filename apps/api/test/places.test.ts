@@ -28,6 +28,43 @@ describe('GooglePlacesProvider', () => {
     expect(requestedInit?.method).toBe('GET');
   });
 
+  describe.each(['search', 'details'] as const)('%s address metadata compatibility', (operation) => {
+    const read = (place: unknown) => {
+      const provider = new GooglePlacesProvider({ apiKey: 'test-key', fetch: async () => response(operation === 'search' ? { places: [googlePlace, place] } : place) });
+      return operation === 'search' ? provider.search({ query: 'Osaka' }).then((places) => places[1]) : provider.getPlace('place-1');
+    };
+    it.each([
+      ['missing components', undefined], ['empty components', []],
+      ['missing types', [{ longText: 'Osaka' }]],
+      ['empty types', [{ longText: 'Osaka', types: [] }]],
+      ['unknown metadata', [{ longText: 'Osaka', types: ['future_component_type'], futureField: { value: true } }]],
+      ['missing longText', [{ types: ['locality'] }]],
+    ])('accepts %s without inventing locality', async (_label, addressComponents) => {
+      await expect(read({ ...googlePlace, addressComponents })).resolves.toMatchObject({
+        providerPlaceId: 'place-1', name: '경복궁', formattedAddress: '서울특별시 종로구',
+        latitude: 37.5796, longitude: 126.977, category: 'sightseeing', city: '', region: '',
+      });
+    });
+    it('ignores incomplete components while preserving usable locality', async () => {
+      await expect(read({ ...googlePlace, addressComponents: [
+        { longText: 'untyped' }, { types: ['locality'] },
+        { longText: 'Osaka', types: ['locality'], extra: 'ignored' },
+        { longText: 'Osaka Prefecture', types: ['administrative_area_level_1'] },
+      ] })).resolves.toMatchObject({ city: 'Osaka', region: 'Osaka Prefecture' });
+    });
+    it.each([
+      ['missing id', { id: undefined }], ['empty id', { id: '' }],
+      ['missing displayName', { displayName: undefined }], ['missing name text', { displayName: {} }],
+      ['empty name text', { displayName: { text: '' } }],
+      ['missing address', { formattedAddress: undefined }], ['empty address', { formattedAddress: '' }],
+      ['missing location', { location: undefined }],
+      ['invalid latitude', { location: { latitude: '37.5', longitude: 126.9 } }],
+      ['invalid longitude', { location: { latitude: 37.5, longitude: '126.9' } }],
+    ])('still rejects malformed core: %s', async (_label, patch) => {
+      await expect(read({ ...googlePlace, ...patch })).rejects.toMatchObject({ code: 'invalid_response', retryable: false });
+    });
+  });
+
   it('빈 검색 결과는 정상 빈 배열이다', async () => expect(new GooglePlacesProvider({ apiKey: 'key', fetch: async () => response({}) }).search({ query: '없음' })).resolves.toEqual([]));
   it.each([[400, 'bad_request', false], [401, 'auth', false], [403, 'auth', false], [429, 'rate_limit', true], [503, 'unavailable', true]])('%s 응답을 분류한다', async (status, code, retryable) => {
     await expect(new GooglePlacesProvider({ apiKey: 'key', fetch: async () => response({}, status as number) }).search({ query: '서울' })).rejects.toMatchObject({ code, retryable });

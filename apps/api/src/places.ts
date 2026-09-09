@@ -28,7 +28,8 @@ const googlePlaceSchema = z.object({
   location: z.object({ latitude: z.number(), longitude: z.number() }),
   primaryType: z.string().optional(),
   types: z.array(z.string()).optional(),
-  addressComponents: z.array(z.object({ longText: z.string(), types: z.array(z.string()) })).optional(),
+  // Google can omit auxiliary address metadata; core place fields stay required.
+  addressComponents: z.array(z.object({ longText: z.string().default(''), types: z.array(z.string()).default([]) })).optional(),
 });
 const searchResponseSchema = z.object({ places: z.array(googlePlaceSchema).optional().default([]) });
 
@@ -89,7 +90,7 @@ export class GooglePlacesProvider implements PlaceSearchProvider {
   }
 
   private map(place: z.infer<typeof googlePlaceSchema>, context?: PlaceSearchInput): VerifiedPlace {
-    const component = (type: string) => place.addressComponents?.find((item) => item.types.includes(type))?.longText ?? '';
+    const component = (type: string) => place.addressComponents?.find((item) => item.longText && item.types.includes(type))?.longText ?? '';
     return VerifiedPlaceSchema.parse({
       provider: 'google', providerPlaceId: place.id, name: place.displayName.text, formattedAddress: place.formattedAddress,
       latitude: place.location.latitude, longitude: place.location.longitude,
