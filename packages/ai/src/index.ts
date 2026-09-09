@@ -99,12 +99,12 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
 
   planTrip(input: TripPlanningInput): Promise<TravelPlanDraft> {
     const parsed = TripPlanningInputSchema.parse(input);
-    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema, this.model);
+    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan');
   }
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
     const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model);
+    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan');
   }
 
   async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
@@ -127,7 +127,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { return await operation(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string): Promise<T> {
+  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, compatibility?: 'travel-plan'): Promise<T> {
     const key = `${model}:${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
@@ -136,7 +136,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     const operation = this.slot(async () => {
       let last: unknown;
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-        try { return await this.call(prompt, schema, model, (value) => { usage = value; }); } catch (error) {
+        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, compatibility); } catch (error) {
           last = error;
           if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries) throw error;
           await wait(Math.min(250 * 2 ** attempt, 2000));
@@ -156,7 +156,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { await this.options.observer?.record(event); } catch (error) { this.options.onObserverError?.(error); }
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void): Promise<T> {
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, compatibility?: 'travel-plan'): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -164,7 +164,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.options.apiKey },
         signal: controller.signal,
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json', responseJsonSchema: toGeminiResponseJsonSchema(schema) } }),
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json', responseJsonSchema: toGeminiResponseJsonSchema(schema, compatibility) } }),
       });
       if (!response.ok) throw classify(response.status);
       const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };

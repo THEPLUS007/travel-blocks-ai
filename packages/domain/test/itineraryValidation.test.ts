@@ -37,3 +37,12 @@ describe('connection references', () => {
     expect(codes(value)).toEqual(expect.arrayContaining(['missing_connection_day', 'duplicate_connection_id']));
   });
 });
+
+it.each([12, 13])('preserves the business limit for %i blocks', (count) => {
+  const value = plan();
+  value.connections = [];
+  value.days[0].blocks = Array.from({ length: count }, (_, index) => block(`limit-${index}`));
+  expect(MAX_BLOCKS_PER_DAY).toBe(12);
+  expect(validateItinerary(value).valid).toBe(count === 12);
+  expect(codes(value)).toEqual(count === 12 ? [] : ['too_many_blocks']);
+});

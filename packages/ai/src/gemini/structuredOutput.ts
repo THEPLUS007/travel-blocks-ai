@@ -19,7 +19,18 @@ function geminiSubset(value: unknown): unknown {
   }));
 }
 
-export function toGeminiResponseJsonSchema(schema: ZodTypeAny): Record<string, unknown> {
+export function toGeminiResponseJsonSchema(schema: ZodTypeAny, compatibility?: 'travel-plan'): Record<string, unknown> {
   const jsonSchema = zodToJsonSchema(schema, { target: 'jsonSchema7', $refStrategy: 'none' });
-  return geminiSubset(jsonSchema) as Record<string, unknown>;
+  const result = geminiSubset(jsonSchema) as Record<string, unknown>;
+  if (compatibility === 'travel-plan') {
+    // Gemini rejects the complex blocks array with maxItems=100. Local Zod and
+    // itinerary validation still enforce their original limits after generation.
+    let node: unknown = result;
+    for (const key of ['properties', 'days', 'items', 'properties', 'blocks']) {
+      node = node && typeof node === 'object' && !Array.isArray(node)
+        ? (node as Record<string, unknown>)[key] : undefined;
+    }
+    if (node && typeof node === 'object' && !Array.isArray(node)) delete (node as Record<string, unknown>).maxItems;
+  }
+  return result;
 }

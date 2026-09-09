@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GenerateTripResponseSchema, type PlaceRankingInput } from '@travel-blocks/shared';
+import { GenerateTripResponseSchema, TravelIntentSchema, PlaceRankingResultSchema, type PlaceRankingInput } from '@travel-blocks/shared';
 import { AiProviderError, GeminiTravelAiProvider } from '../src/index.js';
 import { toGeminiResponseJsonSchema } from '../src/gemini/structuredOutput.js';
 
@@ -16,18 +16,45 @@ describe('Gemini structured outputs', () => {
     expect(JSON.stringify(schema)).not.toContain('default');
   });
 
+  it('changes only the trip blocks array limit and keeps the original schema intact', () => {
+    const original: any = toGeminiResponseJsonSchema(GenerateTripResponseSchema);
+    const expected = structuredClone(original);
+    delete expected.properties.days.items.properties.blocks.maxItems;
+    const adapted = toGeminiResponseJsonSchema(GenerateTripResponseSchema, 'travel-plan');
+    expect(adapted).toEqual(expected);
+    expect(original.properties.days.items.properties.blocks.maxItems).toBe(100);
+    expect(toGeminiResponseJsonSchema(GenerateTripResponseSchema)).toEqual(original);
+  });
+
+  it('keeps intent and ranking array limits', () => {
+    const intent: any = toGeminiResponseJsonSchema(TravelIntentSchema);
+    const ranking: any = toGeminiResponseJsonSchema(PlaceRankingResultSchema);
+    expect(intent.properties.preferences.maxItems).toBe(20);
+    expect(intent.properties.avoidances.maxItems).toBe(20);
+    expect(intent.properties.requestedCategories.maxItems).toBe(6);
+    expect(ranking.properties.selections.maxItems).toBe(5);
+  });
+
   it.each([
     ['generateTrip', validPlan],
+    ['planTrip', validPlan],
+    ['extractIntent', {}],
     ['analyzeText', validPlan],
     ['rankPlaces', { selections: [{ candidateId: 'google:p1', reason: '적합함' }] }],
   ])('%s 요청에 responseJsonSchema를 전달한다', async (method, output) => {
     let requestBody: any;
     const provider = new GeminiTravelAiProvider({ apiKey: 'test', fetch: vi.fn(async (_url, init) => { requestBody = JSON.parse(String(init?.body)); return gemini(output); }) });
     if (method === 'generateTrip') await provider.generateTrip({ prompt: '서울' });
+    else if (method === 'planTrip') await provider.planTrip({ prompt: '서울', intent: { preferences: [], avoidances: [], requestedCategories: [] }, candidates: [] });
+    else if (method === 'extractIntent') await provider.extractIntent({ prompt: '서울' });
     else if (method === 'analyzeText') await provider.analyzeText({ content: '서울 여행 기록' });
     else await provider.rankPlaces(rankingInput);
     expect(requestBody.generationConfig.responseMimeType).toBe('application/json');
     expect(requestBody.generationConfig.responseJsonSchema).toMatchObject({ type: 'object' });
+    const expected = method === 'rankPlaces' ? toGeminiResponseJsonSchema(PlaceRankingResultSchema)
+      : method === 'extractIntent' ? toGeminiResponseJsonSchema(TravelIntentSchema)
+      : toGeminiResponseJsonSchema(GenerateTripResponseSchema, 'travel-plan');
+    expect(requestBody.generationConfig.responseJsonSchema).toEqual(expected);
   });
 
   it.each([
