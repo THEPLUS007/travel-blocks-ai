@@ -46,7 +46,7 @@ export interface AiRunObserver { record(event: AiRunEvent): void | Promise<void>
 
 export type AiErrorCode = 'rate_limit' | 'unavailable' | 'timeout' | 'auth' | 'invalid_output' | 'bad_request' | 'network';
 export class AiProviderError extends Error {
-  constructor(public code: AiErrorCode, public retryable: boolean, public status?: number, cause?: unknown) {
+  constructor(public code: AiErrorCode, public retryable: boolean, public status?: number, cause?: unknown, public retryAfterMs?: number) {
     super(code, { cause });
     this.name = 'AiProviderError';
   }
@@ -64,9 +64,27 @@ export interface GeminiProviderOptions {
   onUsage?: (usage: AiUsage) => void;
   observer?: AiRunObserver;
   onObserverError?: (error: unknown) => void;
+  wait?: (ms: number) => Promise<void>;
+  random?: () => number;
 }
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const classify = (status: number) => status === 429 ? new AiProviderError('rate_limit', true, status) : [500, 502, 503, 504].includes(status) ? new AiProviderError('unavailable', true, status) : [401, 403].includes(status) ? new AiProviderError('auth', false, status) : new AiProviderError('bad_request', false, status);
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const RETRY_BUDGET_MS = 27_000;
+
+function retryAfterMs(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.round(seconds * 1_000);
+  const date = Date.parse(value);
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  return undefined;
+}
+
+function classify(status: number, retryAfter: string | null): AiProviderError {
+  if (status === 429) return new AiProviderError('rate_limit', true, status, undefined, retryAfterMs(retryAfter));
+  if ([500, 502, 503, 504].includes(status)) return new AiProviderError('unavailable', true, status);
+  if ([401, 403].includes(status)) return new AiProviderError('auth', false, status);
+  return new AiProviderError('bad_request', false, status);
+}
 
 export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly model: string;
@@ -74,6 +92,8 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly fetcher: typeof fetch;
+  private readonly waiter: (ms: number) => Promise<void>;
+  private readonly random: () => number;
   private readonly inFlight = new Map<string, Promise<unknown>>();
   private active = 0;
   private readonly queue: Array<() => void> = [];
@@ -85,6 +105,8 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxRetries = options.maxRetries ?? 2;
     this.fetcher = options.fetch ?? fetch;
+    this.waiter = options.wait ?? wait;
+    this.random = options.random ?? Math.random;
   }
 
   extractIntent(input: GenerateTripInput): Promise<TravelIntent> {
@@ -133,13 +155,18 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     if (current) return current as Promise<T>;
     const startedAt = Date.now();
     let usage: AiUsage = {};
+    const deadline = Date.now() + RETRY_BUDGET_MS;
     const operation = this.slot(async () => {
       let last: unknown;
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, compatibility); } catch (error) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw last ?? new AiProviderError('timeout', true);
+        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, compatibility, Math.min(this.timeoutMs, remaining)); } catch (error) {
           last = error;
           if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries) throw error;
-          await wait(Math.min(250 * 2 ** attempt, 2000));
+          const delay = error.retryAfterMs ?? this.backoffMs(attempt);
+          if (delay >= deadline - Date.now()) throw error;
+          await this.waiter(delay);
         }
       }
       throw last;
@@ -156,9 +183,14 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { await this.options.observer?.record(event); } catch (error) { this.options.onObserverError?.(error); }
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, compatibility?: 'travel-plan'): Promise<T> {
+  private backoffMs(attempt: number): number {
+    const base = Math.min(1_000 * 2 ** attempt, 4_000);
+    return Math.round(base * (0.8 + this.random() * 0.4));
+  }
+
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await this.fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
@@ -166,7 +198,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         signal: controller.signal,
         body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json', responseJsonSchema: toGeminiResponseJsonSchema(schema, compatibility) } }),
       });
-      if (!response.ok) throw classify(response.status);
+      if (!response.ok) throw classify(response.status, response.headers.get('retry-after'));
       const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
       const usage = { inputTokens: body.usageMetadata?.promptTokenCount, outputTokens: body.usageMetadata?.candidatesTokenCount };
       captureUsage(usage);
