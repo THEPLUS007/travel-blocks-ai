@@ -70,7 +70,7 @@ export class GooglePlacesProvider implements PlaceSearchProvider {
   async search(input: PlaceSearchInput): Promise<VerifiedPlace[]> {
     const parsed = PlaceSearchInputSchema.parse(input);
     const body = await this.request('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST', body: JSON.stringify({ textQuery: buildGooglePlacesTextQuery(parsed), pageSize: 10 }), fieldMask: searchFields,
+      method: 'POST', body: JSON.stringify({ textQuery: buildGooglePlacesTextQuery(parsed), pageSize: 10, languageCode: 'ko' }), fieldMask: searchFields,
     });
     let places: z.infer<typeof googlePlaceSchema>[];
     try { places = searchResponseSchema.parse(body).places; } catch (error) { throw new PlaceProviderError('invalid_response', false, undefined, error); }
@@ -80,7 +80,7 @@ export class GooglePlacesProvider implements PlaceSearchProvider {
   async getPlace(placeId: string): Promise<VerifiedPlace | null> {
     const id = z.string().trim().min(1).max(200).parse(placeId);
     try {
-      const body = await this.request(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`, { method: 'GET', fieldMask: detailsFields });
+      const body = await this.request(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}?languageCode=ko`, { method: 'GET', fieldMask: detailsFields });
       return this.map(googlePlaceSchema.parse(body));
     } catch (error) {
       if (error instanceof PlaceProviderError && error.code === 'not_found') return null;

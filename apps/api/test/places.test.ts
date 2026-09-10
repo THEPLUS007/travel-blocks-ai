@@ -15,7 +15,7 @@ describe('GooglePlacesProvider', () => {
     const init = requestedInit;
     expect(url).toBe('https://places.googleapis.com/v1/places:searchText');
     expect(init?.headers).toMatchObject({ 'X-Goog-Api-Key': 'server-key', 'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.addressComponents' });
-    expect(JSON.parse(String(init?.body))).toEqual({ textQuery: '경복궁, 관광, 서울, 종로구', pageSize: 10 });
+    expect(JSON.parse(String(init?.body))).toEqual({ textQuery: '경복궁, 관광, 서울, 종로구', pageSize: 10, languageCode: 'ko' });
   });
 
   it('Place ID로 Details를 조회하고 Text Search를 반복하지 않는다', async () => {
@@ -24,8 +24,9 @@ describe('GooglePlacesProvider', () => {
     const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => { requestedUrl = url; requestedInit = init; return response({ ...googlePlace, primaryType: 'restaurant' }); });
     const result = await new GooglePlacesProvider({ apiKey: 'key', fetch: fetcher }).getPlace('place/with space');
     expect(result).toMatchObject({ providerPlaceId: 'place-1', category: 'food', city: '서울', region: '서울특별시' });
-    expect(requestedUrl).toBe('https://places.googleapis.com/v1/places/place%2Fwith%20space');
+    expect(requestedUrl).toBe('https://places.googleapis.com/v1/places/place%2Fwith%20space?languageCode=ko');
     expect(requestedInit?.method).toBe('GET');
+    expect(requestedInit?.headers).toMatchObject({ 'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,primaryType,types,addressComponents' });
   });
 
   describe.each(['search', 'details'] as const)('%s address metadata compatibility', (operation) => {
