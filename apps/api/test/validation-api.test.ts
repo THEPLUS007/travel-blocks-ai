@@ -72,3 +72,15 @@ it('analyzes a lengthy Busan fixture with the compatible trip schema and itinera
   expect(requestBody.generationConfig.responseJsonSchema.properties.days.items.properties.blocks.maxItems).toBeUndefined();
   await app.close();
 });
+
+
+it("normalizes an unverified source-only place marker before analyze-text domain validation", async () => {
+  const plan: any = structuredClone(fixturePlan);
+  plan.days[0].blocks[0].place = { provider: "source", providerPlaceId: "unverified", verified: false };
+  const ai = new GeminiTravelAiProvider({ apiKey: "test", fetch: async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(plan) }] } }] }), { status: 200 }) });
+  const app = await buildApp({ repository: {} as TripRepository, auth: { authenticate: async () => ({ userId: "u" }) }, ai, places: new TestPlaceProvider() });
+  const response = await app.inject({ method: "POST", url: "/api/v1/ai/analyze-text", payload: { content: "부산 여행 기록" } });
+  expect(response.statusCode).toBe(200);
+  expect(response.json().days[0].blocks[0].place).toBeUndefined();
+  await app.close();
+});

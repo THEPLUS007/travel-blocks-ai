@@ -19,6 +19,7 @@ describe('task-specific prompts', () => {
     expect(generate.systemInstruction).toContain('Do not claim that routes, opening hours');
     expect(analyze.systemInstruction).toContain('Distinguish information explicitly present');
     expect(analyze.systemInstruction).toContain('do not fetch');
+    expect(analyze.systemInstruction).toContain('omit `block.place` entirely');
     expect(generate.systemInstruction).not.toBe(analyze.systemInstruction);
   });
 

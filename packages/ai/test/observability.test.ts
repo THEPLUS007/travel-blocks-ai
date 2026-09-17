@@ -140,3 +140,28 @@ describe("extract_intent timeout policy (mock only)", () => {
     expect(attempts).toBe(2);
   });
 });
+
+
+describe("analyze-text source-only place normalization (mock only)", () => {
+  const sourceOnlyPlan = () => ({ ...validPlan, days: [{ id: "day-1", dayNumber: 1, title: "첫날", blocks: [{ id: "block-1", title: "출처 장소", category: "sightseeing", priceLevel: "low", place: { provider: "source", providerPlaceId: "unverified", verified: false } }] }] });
+
+  it("omits unverified source-only place markers before analyze-text schema validation", async () => {
+    const provider = new GeminiTravelAiProvider({ apiKey: "x", fetch: async () => response(sourceOnlyPlan()) });
+    const result = await provider.analyzeText({ content: "부산 여행 기록" });
+    expect(result.days[0].blocks[0].place).toBeUndefined();
+  });
+
+  it("retains Full Generation schema validation for an unverified place marker", async () => {
+    const provider = new GeminiTravelAiProvider({ apiKey: "x", fetch: async () => response(sourceOnlyPlan()) });
+    await expect(provider.generateTrip({ prompt: "오사카" })).rejects.toMatchObject({ code: "invalid_output" });
+  });
+
+  it("records bounded per-attempt error codes without raw output", async () => {
+    const events: AiRunEvent[] = [];
+    let attempts = 0;
+    const provider = new GeminiTravelAiProvider({ apiKey: "x", maxRetries: 1, wait: async () => undefined, observer: { record: (event) => events.push(event) }, fetch: async () => ++attempts === 1 ? response({}, 503) : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "{attempt-raw-only-marker" }] } }] })) });
+    await expect(provider.analyzeText({ content: "부산 여행 기록" })).rejects.toMatchObject({ code: "invalid_output" });
+    expect(events).toEqual([expect.objectContaining({ task: "analyze_text", providerAttempts: 2, attemptErrorCodes: ["unavailable", "invalid_output"] })]);
+    expect(JSON.stringify(events)).not.toContain("attempt-raw-only-marker");
+  });
+});

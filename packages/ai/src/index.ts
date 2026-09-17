@@ -60,6 +60,7 @@ export interface AiRunEvent {
   schemaIssueCount?: number;
   schemaIssueCodes?: string[];
   schemaIssuePaths?: string[];
+  attemptErrorCodes?: AiErrorCode[];
 }
 export interface AiRunObserver { record(event: AiRunEvent): void | Promise<void> }
 
@@ -112,6 +113,20 @@ function classify(status: number, retryAfter: string | null): AiProviderError {
   return new AiProviderError('bad_request', false, status);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+
+function normalizeAnalyzeTextOutput(output: unknown): unknown {
+  if (!isRecord(output) || !Array.isArray(output.days)) return output;
+  return { ...output, days: output.days.map((day) => {
+    if (!isRecord(day) || !Array.isArray(day.blocks)) return day;
+    return { ...day, blocks: day.blocks.map((block) => {
+      if (!isRecord(block) || !isRecord(block.place) || block.place.verified === true) return block;
+      const { place: _unverifiedPlace, ...sourceOnlyBlock } = block;
+      return sourceOnlyBlock;
+    }) };
+  }) };
+}
+
 export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly model: string;
   private readonly intentModel: string;
@@ -158,7 +173,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
     const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan');
+    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan', normalizeAnalyzeTextOutput);
   }
 
   async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
@@ -181,7 +196,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     try { return await operation(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, compatibility?: 'travel-plan'): Promise<T> {
+  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, compatibility?: 'travel-plan', normalizeOutput?: (output: unknown) => unknown): Promise<T> {
     const key = `${model}:${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
@@ -190,6 +205,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     let diagnostics: AiOutputDiagnostics = {};
     let attempts = 0;
     let retryAfterUsed = false;
+    const attemptErrorCodes: AiErrorCode[] = [];
     const timeoutMs = this.timeoutFor(task);
     const deadline = Date.now() + this.retryBudgetFor(task);
     const operation = this.slot(async () => {
@@ -198,8 +214,9 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         const remaining = deadline - Date.now();
         if (remaining < timeoutMs) throw last ?? new AiProviderError('timeout', true);
         attempts++;
-        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, (value) => { diagnostics = value; }, compatibility, timeoutMs); } catch (error) {
+        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, (value) => { diagnostics = value; }, compatibility, timeoutMs, normalizeOutput); } catch (error) {
           last = error;
+          attemptErrorCodes.push(error instanceof AiProviderError ? error.code : 'network');
           if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries || (error.code === 'timeout' && this.isClientTimeoutTerminal(task))) throw error;
           retryAfterUsed ||= error.retryAfterMs !== undefined;
           const delay = error.retryAfterMs ?? this.backoffMs(attempt);
@@ -210,8 +227,8 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
       throw last;
     });
     const promise = operation.then(
-      async (result) => { await this.observe({ provider: 'gemini', model, task, status: 'success', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, providerAttempts: attempts, retryAfterUsed }); return result; },
-      async (error) => { await this.observe({ provider: 'gemini', model, task, status: 'error', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, ...(error instanceof AiProviderError ? error.diagnostics : {}), providerAttempts: attempts, retryAfterUsed, errorCode: error instanceof AiProviderError ? error.code : 'network' }); throw error; },
+      async (result) => { await this.observe({ provider: 'gemini', model, task, status: 'success', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, providerAttempts: attempts, retryAfterUsed, attemptErrorCodes: attemptErrorCodes.length ? attemptErrorCodes : undefined }); return result; },
+      async (error) => { await this.observe({ provider: 'gemini', model, task, status: 'error', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, ...(error instanceof AiProviderError ? error.diagnostics : {}), providerAttempts: attempts, retryAfterUsed, errorCode: error instanceof AiProviderError ? error.code : 'network', attemptErrorCodes }); throw error; },
     ).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, promise);
     return promise;
@@ -231,7 +248,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   private timeoutFor(task: AiTask): number { return task === 'extract_intent' ? this.intentTimeoutMs : this.isLongTask(task) ? this.longTaskTimeoutMs : this.timeoutMs; }
   private retryBudgetFor(task: AiTask): number { return task === 'extract_intent' ? Math.max(SHORT_TASK_RETRY_BUDGET_MS, this.intentTimeoutMs + INTENT_RETRY_BUDGET_HEADROOM_MS) : this.isLongTask(task) ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs): Promise<T> {
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs, normalizeOutput?: (output: unknown) => unknown): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -253,7 +270,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
       if (!text) throw new AiProviderError('invalid_output', false, undefined, undefined, undefined, { ...diagnostics, invalidOutputStage: 'missing_text' });
       let output: unknown;
       try { output = JSON.parse(text); } catch (error) { throw new AiProviderError('invalid_output', false, undefined, error, undefined, { ...diagnostics, invalidOutputStage: 'json_parse' }); }
-      try { return schema.parse(output); } catch (error) {
+      try { return schema.parse(normalizeOutput ? normalizeOutput(output) : output); } catch (error) {
         const schemaDiagnostics: AiOutputDiagnostics = error instanceof ZodError ? { ...diagnostics, invalidOutputStage: 'schema_validation', schemaIssueCount: error.issues.length, schemaIssueCodes: [...new Set(error.issues.map((issue) => issue.code))].slice(0, 10), schemaIssuePaths: error.issues.slice(0, 10).map((issue) => issue.path.map((part) => typeof part === 'number' ? String(part) : String(part).replace(/[^a-zA-Z0-9_.-]/g, '_')).join('.').slice(0, 160)) } : { ...diagnostics, invalidOutputStage: 'schema_validation' };
         throw new AiProviderError('invalid_output', false, undefined, error, undefined, schemaDiagnostics);
       }
