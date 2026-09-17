@@ -57,6 +57,7 @@ try {
         model: config.geminiModel,
         intentModel: config.geminiIntentModel,
         timeoutMs: config.geminiTimeoutMs,
+        intentTimeoutMs: config.geminiIntentTimeoutMs,
         longTaskTimeoutMs: config.geminiLongTaskTimeoutMs,
         longTaskRetryBudgetMs: config.geminiLongTaskRetryBudgetMs,
         maxRetries: config.geminiMaxRetries,

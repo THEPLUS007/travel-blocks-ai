@@ -77,6 +77,7 @@ export interface GeminiProviderOptions {
   model?: string;
   intentModel?: string;
   timeoutMs?: number;
+  intentTimeoutMs?: number;
   longTaskTimeoutMs?: number;
   longTaskRetryBudgetMs?: number;
   maxRetries?: number;
@@ -90,6 +91,8 @@ export interface GeminiProviderOptions {
 }
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const SHORT_TASK_RETRY_BUDGET_MS = 27_000;
+const DEFAULT_INTENT_TIMEOUT_MS = 30_000;
+const INTENT_RETRY_BUDGET_HEADROOM_MS = 1_500;
 const DEFAULT_LONG_TASK_TIMEOUT_MS = 40_000;
 const DEFAULT_LONG_TASK_RETRY_BUDGET_MS = 45_000;
 
@@ -113,6 +116,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly model: string;
   private readonly intentModel: string;
   private readonly timeoutMs: number;
+  private readonly intentTimeoutMs: number;
   private readonly longTaskTimeoutMs: number;
   private readonly longTaskRetryBudgetMs: number;
   private readonly maxRetries: number;
@@ -128,6 +132,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     this.model = options.model ?? 'gemini-3.5-flash';
     this.intentModel = options.intentModel ?? this.model;
     this.timeoutMs = options.timeoutMs ?? 15_000;
+    this.intentTimeoutMs = options.intentTimeoutMs ?? DEFAULT_INTENT_TIMEOUT_MS;
     this.longTaskTimeoutMs = options.longTaskTimeoutMs ?? DEFAULT_LONG_TASK_TIMEOUT_MS;
     this.longTaskRetryBudgetMs = options.longTaskRetryBudgetMs ?? DEFAULT_LONG_TASK_RETRY_BUDGET_MS;
     this.maxRetries = options.maxRetries ?? 2;
@@ -195,7 +200,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         attempts++;
         try { return await this.call(prompt, schema, model, (value) => { usage = value; }, (value) => { diagnostics = value; }, compatibility, timeoutMs); } catch (error) {
           last = error;
-          if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries || (error.code === 'timeout' && this.isLongTask(task))) throw error;
+          if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries || (error.code === 'timeout' && this.isClientTimeoutTerminal(task))) throw error;
           retryAfterUsed ||= error.retryAfterMs !== undefined;
           const delay = error.retryAfterMs ?? this.backoffMs(attempt);
           if (delay + timeoutMs > deadline - Date.now()) throw error;
@@ -222,8 +227,9 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   }
 
   private isLongTask(task: AiTask): boolean { return task === 'generate_trip' || task === 'analyze_text'; }
-  private timeoutFor(task: AiTask): number { return this.isLongTask(task) ? this.longTaskTimeoutMs : this.timeoutMs; }
-  private retryBudgetFor(task: AiTask): number { return this.isLongTask(task) ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
+  private isClientTimeoutTerminal(task: AiTask): boolean { return task === 'extract_intent' || this.isLongTask(task); }
+  private timeoutFor(task: AiTask): number { return task === 'extract_intent' ? this.intentTimeoutMs : this.isLongTask(task) ? this.longTaskTimeoutMs : this.timeoutMs; }
+  private retryBudgetFor(task: AiTask): number { return task === 'extract_intent' ? Math.max(SHORT_TASK_RETRY_BUDGET_MS, this.intentTimeoutMs + INTENT_RETRY_BUDGET_HEADROOM_MS) : this.isLongTask(task) ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
 
   private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs): Promise<T> {
     const controller = new AbortController();

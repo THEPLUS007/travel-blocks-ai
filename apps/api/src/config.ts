@@ -57,6 +57,7 @@ export interface ApiConfig {
   geminiModel: string;
   geminiIntentModel: string;
   geminiTimeoutMs: number;
+  geminiIntentTimeoutMs: number;
   geminiLongTaskTimeoutMs: number;
   geminiLongTaskRetryBudgetMs: number;
   geminiMaxRetries: number;
@@ -96,6 +97,7 @@ export function loadApiConfig(): ApiConfig {
     geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiIntentModel: process.env.GEMINI_INTENT_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiTimeoutMs: integer('GEMINI_TIMEOUT_MS', 15_000, 1000, 120_000),
+    geminiIntentTimeoutMs: integer('GEMINI_INTENT_TIMEOUT_MS', 30_000, 1000, 120_000),
     geminiLongTaskTimeoutMs: integer('GEMINI_LONG_TASK_TIMEOUT_MS', 40_000, 15_000, 60_000),
     geminiLongTaskRetryBudgetMs: integer('GEMINI_LONG_TASK_RETRY_BUDGET_MS', 45_000, 40_000, 60_000),
     geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 2),

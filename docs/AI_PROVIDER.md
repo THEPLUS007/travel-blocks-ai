@@ -20,9 +20,9 @@ Gemini의 각 logical operation은 HTTP retry attempt 수와 무관하게 `extra
 
 ## Free-tier guardrails and safe diagnostics
 
-Production serializes Gemini work with `GEMINI_MAX_CONCURRENCY=1`. `extract_intent` and `rank_places` use `GEMINI_TIMEOUT_MS` (15 seconds by default); `generate_trip` and `analyze_text` use `GEMINI_LONG_TASK_TIMEOUT_MS` (40 seconds by default) with `GEMINI_LONG_TASK_RETRY_BUDGET_MS` (45 seconds by default).
+Production serializes Gemini work with `GEMINI_MAX_CONCURRENCY=1`. `extract_intent` uses `GEMINI_INTENT_TIMEOUT_MS` (30 seconds by default); `rank_places` retains `GEMINI_TIMEOUT_MS` (15 seconds by default); `generate_trip` and `analyze_text` use `GEMINI_LONG_TASK_TIMEOUT_MS` (40 seconds by default) with `GEMINI_LONG_TASK_RETRY_BUDGET_MS` (45 seconds by default).
 
-Long-task client timeouts are terminal and are not retried, because inference may already have consumed quota. Retryable 429 and transient 500/502/503/504 responses retain bounded provider-owned retry with valid `Retry-After` preferred over jittered exponential backoff. There is no outer shell or validation retry.
+`extract_intent`, `generate_trip`, and `analyze_text` client timeouts are terminal and are not retried, because inference may already have consumed quota. Retryable 429 and transient 500/502/503/504 responses retain bounded provider-owned retry with valid `Retry-After` preferred over jittered exponential backoff. `rank_places` retains its existing short-task bounded timeout behavior. There is no outer shell or validation retry.
 
 Lifecycle events include provider attempt count and whether a `Retry-After` delay was used. The server journals only safe event metadata before sending the existing persistent fields to observability storage; this requires no database migration.
 

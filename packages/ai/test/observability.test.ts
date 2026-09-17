@@ -93,3 +93,50 @@ describe('short task retry policy (mock only)', () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+
+describe("extract_intent timeout policy (mock only)", () => {
+  const validIntent = { destination: { city: "오사카" }, preferences: [], avoidances: [], requestedCategories: [] as const };
+
+  it("allows an intent response after 15 seconds but before its 30-second timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(() => new Promise<Response>((resolve) => setTimeout(() => resolve(response(validIntent)), 20)));
+      const result = new GeminiTravelAiProvider({ apiKey: "x", timeoutMs: 15, intentTimeoutMs: 30, maxRetries: 0, fetch: fetcher }).extractIntent({ prompt: "오사카" });
+      await vi.advanceTimersByTimeAsync(20);
+      await expect(result).resolves.toEqual(validIntent);
+      expect(fetcher).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("does not retry an extract_intent client timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const events: AiRunEvent[] = [];
+      const fetcher = vi.fn((_: unknown, init?: RequestInit) => new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("x", "AbortError")))));
+      const provider = new GeminiTravelAiProvider({ apiKey: "x", intentTimeoutMs: 30, maxRetries: 2, observer: { record: (event) => events.push(event) }, fetch: fetcher });
+      const result = provider.extractIntent({ prompt: "오사카" });
+      const assertion = expect(result).rejects.toMatchObject({ code: "timeout" });
+      await vi.advanceTimersByTimeAsync(30);
+      await assertion;
+      expect(fetcher).toHaveBeenCalledOnce();
+      expect(events).toEqual([expect.objectContaining({ task: "extract_intent", status: "error", errorCode: "timeout", providerAttempts: 1 })]);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("keeps Retry-After retry behavior for extract_intent 429 responses", async () => {
+    let attempts = 0;
+    const delays: number[] = [];
+    const provider = new GeminiTravelAiProvider({ apiKey: "x", intentTimeoutMs: 30, maxRetries: 1, wait: async (ms) => { delays.push(ms); }, fetch: async () => ++attempts === 1 ? new Response("{}", { status: 429, headers: { "Retry-After": "1" } }) : response(validIntent) });
+    await expect(provider.extractIntent({ prompt: "오사카" })).resolves.toEqual(validIntent);
+    expect(attempts).toBe(2);
+    expect(delays).toEqual([1_000]);
+  });
+
+  it("keeps bounded retry behavior for extract_intent 503 responses", async () => {
+    let attempts = 0;
+    const provider = new GeminiTravelAiProvider({ apiKey: "x", intentTimeoutMs: 30, maxRetries: 1, wait: async () => undefined, fetch: async () => ++attempts === 1 ? response({}, 503) : response(validIntent) });
+    await expect(provider.extractIntent({ prompt: "오사카" })).resolves.toEqual(validIntent);
+    expect(attempts).toBe(2);
+  });
+});
