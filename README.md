@@ -1,62 +1,185 @@
 # Travel Blocks AI
 
-Day와 Travel Block 단위로 여행 일정을 편집하고 PostgreSQL에 영구 저장하는 React/Fastify 서비스입니다. 해커톤 원본은 `hackathon-submission-2026-07-10` 태그에 보존돼 있습니다.
+Travel Blocks AI turns a travel request or travel-related text into an editable itinerary organized by day and Travel Block. It combines AI with verified place data, then validates and stores the resulting plan.
 
-## Runtime
+## Project Status
 
-이 저장소는 Node.js 22 LTS를 사용합니다. 지원 범위는 `>=22.12 <23`이며 `.nvmrc`에 검증 기준 patch 버전을 기록합니다.
+- **Production:** Deployed
+- **CI:** Quality, E2E, PostgreSQL
+- **Runtime:** Node.js 22 (`>=22.12 <23`)
 
-## 지원 기능
+## Overview
 
-- Day/Block 생성·수정·삭제·복사·이동·정렬과 교통 연결
-- PostgreSQL Trip CRUD, version 기반 optimistic concurrency, transaction 저장
-- 서버 발급 httpOnly 익명 세션과 사용자별 Trip 격리
-- Gemini adapter 기반 일정 생성·텍스트 분석·추천
-- task별 prompt, Gemini JSON Schema structured output, Zod 재검증
-- structured TravelIntent 추출과 task별 optional model routing
-- provider 검증 장소만 추천 블록으로 반환
-- Google Places API (New) server-side Text Search와 Place Details
-- SSRF 방어가 적용된 public HTML/text source 분석
-- 저장하지 않은 변경 경고와 내보내기
+The service helps users move from unstructured travel information to a plan they can edit and save. It supports AI itinerary generation, travel-text analysis, verified-place grounding, Day/Travel Block editing, and PostgreSQL persistence.
 
-YouTube 자막 추출, 다중 장소 provider 선택, 로그인 UI, 예약·결제는 지원하지 않습니다. production AI 실패는 Mock 일정이 아니라 503 오류입니다.
+## Key Features
 
-## 개발 및 E2E
+- AI itinerary generation from a natural-language request
+- Travel-text analysis into a structured itinerary
+- TravelIntent extraction before trip planning
+- Google Places API (New) candidate retrieval and verified-place grounding
+- Structured output with Zod and domain validation
+- Day / Travel Block editing, ordering, and travel connections
+- Place recommendations from provider-verified candidates
+- PostgreSQL persistence with optimistic concurrency and session isolation
+- Safe public text/HTML source pipeline with SSRF protections
+- Production delivery through Nginx, systemd, and GitHub Actions validation
 
-```bash
-npm ci
-npm run test:server -w @travel-blocks/api
-npm run dev:web
+## Architecture
+
+```mermaid
+flowchart LR
+  User[User] --> Nginx[Nginx / HTTPS]
+  Nginx --> Web[React web]
+  Nginx --> API[Fastify API]
+  API --> DB[(PostgreSQL)]
+  API --> Gemini[Gemini]
+  API --> Places[Google Places API (New)]
 ```
 
-`test:server`는 메모리 저장소와 test provider만 사용합니다.
+See [Architecture](docs/ARCHITECTURE.md) for application boundaries, source handling, and validation details.
 
-## Production
+## AI Generation Flow
 
-Node 22에서 build한 API는 non-root systemd service로 `127.0.0.1:3000`에 bind하고, web `apps/web/dist`는 별도 release 디렉터리로 배포하여 Nginx가 HTTPS same-origin으로 제공합니다. `vite preview`와 web `serve` script는 로컬/Playwright 전용입니다.
+The canonical trip-generation path is:
 
-[Deployment runbook](docs/DEPLOYMENT.md)에 stable Node runtime, systemd, Nginx/HTTPS, DB backup/restore, deployment/rollback 절차가 있습니다. Repository template은 실제 host에 자동 설치되지 않습니다. `.github/workflows/ci.yml`은 Quality, app-contract E2E, ephemeral PostgreSQL backup/restore integration을 검증하며 production 자동 배포나 live billing API 호출은 하지 않습니다.
+```text
+GenerateTripRequest
+→ extractIntent
+→ Google Places candidate retrieval
+→ planTrip
+→ structured output
+→ Zod validation
+→ grounding
+→ candidate integrity validation
+→ domain validation
+→ response
+```
 
-- `GET /api/v1/health`: process liveness
-- `GET /api/v1/ready`: PostgreSQL readiness
-- DB 실패 시 Memory repository로 전환하지 않습니다.
-- HTTPS 운영은 `COOKIE_SECURE=true`, 신뢰할 수 있는 Nginx 뒤에서는 `TRUST_PROXY=true`입니다.
-- Gemini/Google Places key가 없으면 해당 provider 기능은 503을 반환하며 CRUD는 사용할 수 있습니다.
+Travel-text analysis follows a separate, source-aware path:
 
-## 검증 명령
+```text
+Travel text
+→ Gemini structured analysis
+→ task-specific normalization
+→ Zod validation
+→ domain validation
+```
 
-깨끗한 clone의 공식 baseline 검증은 다음 두 명령입니다. `npm test`도 필요한 내부 workspace package를 먼저 빌드하므로 독립 실행할 수 있습니다.
+Only places verified by the place provider are treated as verified places. See [AI Provider](docs/AI_PROVIDER.md) and [Gemini compatibility](docs/GEMINI-COMPATIBILITY.md) for the provider contract.
+
+## Repository Structure
+
+```text
+.
+├── apps/
+│   ├── web/             # React/Vite editor
+│   ├── api/             # Fastify HTTP API
+│   └── mcp/             # Isolated JSON-RPC MCP server
+├── packages/
+│   ├── ai/              # AI provider abstraction and Gemini adapter
+│   ├── domain/          # Pure itinerary and editing rules
+│   ├── shared/          # Zod contracts and shared types
+│   └── test-fixtures/   # Mock providers and fixtures
+├── deploy/              # Nginx and systemd templates
+├── scripts/             # Deployment and operational checks
+├── docs/                # Detailed documentation
+└── .github/             # GitHub Actions workflow
+```
+
+## Tech Stack
+
+- **Frontend:** React, TypeScript, Vite
+- **Backend:** Node.js 22, Fastify, TypeScript
+- **Database:** PostgreSQL, Drizzle ORM
+- **AI:** Gemini with Zod structured validation
+- **Places:** Google Places API (New)
+- **Operations:** Nginx, systemd, GitHub Actions
+
+## Getting Started
+
+```bash
+git clone https://github.com/THEPLUS007/travel-blocks-ai.git
+cd travel-blocks-ai
+nvm use
+npm ci
+```
+
+Copy `.env.example` to a local `.env` and configure the providers and database for your environment. Do not commit credentials.
+
+## Environment Variables
+
+`.env.example` is the source of truth for the complete supported configuration.
+
+| Category | Key variables |
+|---|---|
+| Database | `DATABASE_URL` |
+| Gemini | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_INTENT_MODEL`, `GEMINI_TIMEOUT_MS`, `GEMINI_INTENT_TIMEOUT_MS`, `GEMINI_MAX_RETRIES`, `GEMINI_MAX_CONCURRENCY` |
+| Places | `GOOGLE_PLACES_API_KEY`, `GOOGLE_PLACES_TIMEOUT_MS` |
+| Server | `API_HOST`, `API_PORT`, `COOKIE_SECURE`, `TRUST_PROXY` |
+
+## Development
+
+```bash
+npm run dev
+# or run one service
+npm run dev:web
+npm run dev:api
+```
+
+## Testing & Validation
+
+The local baseline is:
 
 ```bash
 npm ci
 npm run verify
 ```
 
-`verify`는 lint, typecheck, unit/API/MCP test, application build를 순서대로 실행합니다. 외부 환경이 필요한 검증은 별도입니다.
+Additional checks:
 
 ```bash
-npm run test:postgres  # 전용 PostgreSQL과 DATABASE_URL 필요
-npm run test:e2e      # Playwright Chromium 필요
+npm run test:e2e
+npm run test:postgres
+npm audit --omit=dev
 ```
 
-상세 내용은 [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Data Model](docs/DATA_MODEL.md), [Security](docs/SECURITY.md), [Deployment](docs/DEPLOYMENT.md)를 참고하세요.
+GitHub Actions runs the `Quality`, `E2E`, and `PostgreSQL` jobs. These checks use test fixtures or isolated services; they do not use production Gemini or Google Places credentials.
+
+## Production
+
+```text
+Internet → Nginx HTTPS → static React web
+                         └→ /api → Fastify on localhost → PostgreSQL
+```
+
+Nginx provides the public HTTPS boundary, while the Fastify API runs under systemd. See the [deployment runbook](docs/DEPLOYMENT.md) for release, rollback, backup, and operator procedures.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [Product Scope](docs/PRODUCT_SCOPE.md) | Supported product scope and exclusions |
+| [Architecture](docs/ARCHITECTURE.md) | Application boundaries and data flow |
+| [API](docs/API.md) | HTTP API contract |
+| [Data Model](docs/DATA_MODEL.md) | Persistence and data model |
+| [AI Provider](docs/AI_PROVIDER.md) | Gemini tasks, safety, retries, and observability |
+| [Gemini Compatibility](docs/GEMINI-COMPATIBILITY.md) | Structured-output compatibility rules |
+| [Places Compatibility](docs/PLACES-COMPATIBILITY.md) | Google Places API response handling |
+| [Security](docs/SECURITY.md) | Security controls and trust boundaries |
+| [Deployment](docs/DEPLOYMENT.md) | Production deployment and rollback runbook |
+
+The [documentation index](docs/README.md) groups these references by topic.
+
+## Current Limitations
+
+- YouTube transcript extraction is not supported.
+- Multiple place-provider selection is not supported.
+- A full login UI is not included.
+- Booking, payment, price comparison, and collaboration are not included.
+
+## Project History
+
+- Started as a 2026 AX hackathon prototype.
+- Hardened into a production-oriented architecture with explicit provider, validation, persistence, and deployment boundaries.
+- The original hackathon version is preserved in the `hackathon-submission-2026-07-10` tag.
