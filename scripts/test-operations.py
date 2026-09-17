@@ -19,7 +19,7 @@ class OperationsTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.repo = self.root / "repo"
         (self.repo / "scripts").mkdir(parents=True)
-        for name in ("deploy-web.sh", "backup-postgres.sh", "smoke-production.sh"):
+        for name in ("deploy-web.sh", "backup-postgres.sh", "smoke-production.sh", "assert-deployment-provenance.sh"):
             shutil.copy2(REPO / "scripts" / name, self.repo / "scripts" / name)
         self.env = dict(os.environ)
         for key in ("DATABASE_URL", "PGDATABASE", "PGPASSWORD", "PGSERVICE", "PGSERVICEFILE", "PGPASSFILE"):
@@ -207,6 +207,29 @@ if [[ "${FAIL_DUMP:-0}" = 1 ]]; then echo 'fixture-password' >&2; exit 1; fi
                 server.shutdown()
                 thread.join()
 
+
+
+    def test_deployment_provenance_rejects_wrong_repository(self):
+        tools = self.root / "git-tools"
+        tools.mkdir()
+        git = tools / "git"
+        git.write_text('''#!/usr/bin/env bash
+case "$*" in
+  *"rev-parse --show-toplevel"*) printf '%s\\n' "$FAKE_REPO" ;;
+  *"remote get-url origin"*) printf '%s\\n' "$FAKE_ORIGIN" ;;
+  *"branch --show-current"*) printf 'main\\n' ;;
+  *"rev-parse HEAD"*) printf 'abcdef1234567890\\n' ;;
+  *"rev-parse origin/main"*) printf 'abcdef1234567890\\n' ;;
+  *"diff"*"--quiet"*|*"merge-base --is-ancestor"*) exit 0 ;;
+  *) exit 1 ;;
+esac
+''')
+        git.chmod(0o755)
+        self.env.update(PATH=str(tools) + os.pathsep + self.env["PATH"], FAKE_REPO=str(self.repo), FAKE_ORIGIN="https://github.com/THEPLUS007/travel-blocks-ai.git")
+        result = self.run_script("assert-deployment-provenance.sh")
+        self.assertIn("repository=THEPLUS007/travel-blocks-ai", result.stdout)
+        self.env["FAKE_ORIGIN"] = "https://github.com/THEPLUS007/ax-talent-competition-prelims.git"
+        self.run_script("assert-deployment-provenance.sh", ok=False)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

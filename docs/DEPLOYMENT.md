@@ -40,10 +40,10 @@ The deploy script needs write access to the web target's parent. A dedicated dep
 
 Run Git checks in `/home/ubuntu/submission/travel-blocks-ai`; run npm/build/migration commands in the chosen new release directory. Abort on any failed check. Prepare and verify a known-good rollback release before changing the active symlink.
 
-1. `pwd`, `git status --short --branch`, `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main`; require clean tree and expected reviewed commit. Record the old API release and `readlink /var/www/travel-blocks-ai` in the deployment record.
+1. `pwd`, `git status --short --branch`, `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main`, then `bash scripts/assert-deployment-provenance.sh`; require clean `main`, `HEAD == origin/main`, and canonical origin `THEPLUS007/travel-blocks-ai`. The guard hard-fails from any other repository. Record its repository, commit, and timestamp output with the old API release and `readlink /var/www/travel-blocks-ai`.
 2. Verify the stable Node runtime as above, put it on PATH, and export the reviewed commit to the new release directory.
 3. `npm ci` (include dev tools needed for migration/build).
-4. `npm run verify` and `npm audit --omit=dev`; CI Quality, E2E and PostgreSQL must also be green for this commit.
+4. `npm run build:packages`, `npm run verify`, and `npm audit --omit=dev`; CI Quality, E2E and PostgreSQL must also be green for this commit.
 5. Take a backup with the provisioned one-shot unit: `sudo systemctl start travel-blocks-backup.service`. Check exit status and backup completion in journald; perform the separate restore drill below. This is a phase 5 production backup, never part of phase 4.
 6. Run `npm run migrate -w @travel-blocks/api` in the new release with `DATABASE_URL` supplied by a protected operator environment. Do not paste a connection URI in the command line. Migration uses Drizzle's checked-in `apps/api/drizzle` history and records applied migrations in `drizzle.__drizzle_migrations`; re-running applies only pending migrations. Coordinate downtime/writes for schema changes; do not assume old code remains compatible.
 7. `npm run build` in the new release. Confirm `apps/api/dist/server.js`, `apps/web/dist/index.html` and assets exist.
