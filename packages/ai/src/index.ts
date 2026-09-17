@@ -14,7 +14,7 @@ import {
   type TripPlanningInput,
   type TravelPlanDraft,
 } from '@travel-blocks/shared';
-import type { ZodType } from 'zod';
+import { ZodError, type ZodType } from 'zod';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
@@ -32,6 +32,16 @@ export interface TravelAiProvider {
 
 export type AiTask = 'extract_intent' | 'generate_trip' | 'analyze_text' | 'rank_places';
 export type AiRunStatus = 'success' | 'error';
+export type InvalidOutputStage = 'missing_text' | 'json_parse' | 'schema_validation';
+export interface AiOutputDiagnostics {
+  invalidOutputStage?: InvalidOutputStage;
+  candidateCount?: number;
+  finishReason?: string;
+  hasText?: boolean;
+  schemaIssueCount?: number;
+  schemaIssueCodes?: string[];
+  schemaIssuePaths?: string[];
+}
 export interface AiRunEvent {
   provider: 'gemini';
   model: string;
@@ -40,13 +50,22 @@ export interface AiRunEvent {
   latencyMs: number;
   inputTokens?: number;
   outputTokens?: number;
+  providerAttempts: number;
+  retryAfterUsed: boolean;
   errorCode?: AiErrorCode;
+  invalidOutputStage?: InvalidOutputStage;
+  candidateCount?: number;
+  finishReason?: string;
+  hasText?: boolean;
+  schemaIssueCount?: number;
+  schemaIssueCodes?: string[];
+  schemaIssuePaths?: string[];
 }
 export interface AiRunObserver { record(event: AiRunEvent): void | Promise<void> }
 
 export type AiErrorCode = 'rate_limit' | 'unavailable' | 'timeout' | 'auth' | 'invalid_output' | 'bad_request' | 'network';
 export class AiProviderError extends Error {
-  constructor(public code: AiErrorCode, public retryable: boolean, public status?: number, cause?: unknown, public retryAfterMs?: number) {
+  constructor(public code: AiErrorCode, public retryable: boolean, public status?: number, cause?: unknown, public retryAfterMs?: number, public diagnostics?: AiOutputDiagnostics) {
     super(code, { cause });
     this.name = 'AiProviderError';
   }
@@ -58,6 +77,8 @@ export interface GeminiProviderOptions {
   model?: string;
   intentModel?: string;
   timeoutMs?: number;
+  longTaskTimeoutMs?: number;
+  longTaskRetryBudgetMs?: number;
   maxRetries?: number;
   maxConcurrency?: number;
   fetch?: typeof fetch;
@@ -68,7 +89,9 @@ export interface GeminiProviderOptions {
   random?: () => number;
 }
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-const RETRY_BUDGET_MS = 27_000;
+const SHORT_TASK_RETRY_BUDGET_MS = 27_000;
+const DEFAULT_LONG_TASK_TIMEOUT_MS = 40_000;
+const DEFAULT_LONG_TASK_RETRY_BUDGET_MS = 45_000;
 
 function retryAfterMs(value: string | null): number | undefined {
   if (!value) return undefined;
@@ -90,6 +113,8 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   private readonly model: string;
   private readonly intentModel: string;
   private readonly timeoutMs: number;
+  private readonly longTaskTimeoutMs: number;
+  private readonly longTaskRetryBudgetMs: number;
   private readonly maxRetries: number;
   private readonly fetcher: typeof fetch;
   private readonly waiter: (ms: number) => Promise<void>;
@@ -103,6 +128,8 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     this.model = options.model ?? 'gemini-3.5-flash';
     this.intentModel = options.intentModel ?? this.model;
     this.timeoutMs = options.timeoutMs ?? 15_000;
+    this.longTaskTimeoutMs = options.longTaskTimeoutMs ?? DEFAULT_LONG_TASK_TIMEOUT_MS;
+    this.longTaskRetryBudgetMs = options.longTaskRetryBudgetMs ?? DEFAULT_LONG_TASK_RETRY_BUDGET_MS;
     this.maxRetries = options.maxRetries ?? 2;
     this.fetcher = options.fetch ?? fetch;
     this.waiter = options.wait ?? wait;
@@ -143,7 +170,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   }
 
   private async slot<T>(operation: () => Promise<T>): Promise<T> {
-    const max = this.options.maxConcurrency ?? 2;
+    const max = this.options.maxConcurrency ?? 1;
     if (this.active >= max) await new Promise<void>((resolve) => this.queue.push(resolve));
     this.active++;
     try { return await operation(); } finally { this.active--; this.queue.shift()?.(); }
@@ -155,25 +182,31 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     if (current) return current as Promise<T>;
     const startedAt = Date.now();
     let usage: AiUsage = {};
-    const deadline = Date.now() + RETRY_BUDGET_MS;
+    let diagnostics: AiOutputDiagnostics = {};
+    let attempts = 0;
+    let retryAfterUsed = false;
+    const timeoutMs = this.timeoutFor(task);
+    const deadline = Date.now() + this.retryBudgetFor(task);
     const operation = this.slot(async () => {
       let last: unknown;
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
         const remaining = deadline - Date.now();
-        if (remaining <= 0) throw last ?? new AiProviderError('timeout', true);
-        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, compatibility, Math.min(this.timeoutMs, remaining)); } catch (error) {
+        if (remaining < timeoutMs) throw last ?? new AiProviderError('timeout', true);
+        attempts++;
+        try { return await this.call(prompt, schema, model, (value) => { usage = value; }, (value) => { diagnostics = value; }, compatibility, timeoutMs); } catch (error) {
           last = error;
-          if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries) throw error;
+          if (!(error instanceof AiProviderError) || !error.retryable || attempt === this.maxRetries || (error.code === 'timeout' && this.isLongTask(task))) throw error;
+          retryAfterUsed ||= error.retryAfterMs !== undefined;
           const delay = error.retryAfterMs ?? this.backoffMs(attempt);
-          if (delay >= deadline - Date.now()) throw error;
+          if (delay + timeoutMs > deadline - Date.now()) throw error;
           await this.waiter(delay);
         }
       }
       throw last;
     });
     const promise = operation.then(
-      async (result) => { await this.observe({ provider: 'gemini', model, task, status: 'success', latencyMs: Date.now() - startedAt, ...usage }); return result; },
-      async (error) => { await this.observe({ provider: 'gemini', model, task, status: 'error', latencyMs: Date.now() - startedAt, ...usage, errorCode: error instanceof AiProviderError ? error.code : 'network' }); throw error; },
+      async (result) => { await this.observe({ provider: 'gemini', model, task, status: 'success', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, providerAttempts: attempts, retryAfterUsed }); return result; },
+      async (error) => { await this.observe({ provider: 'gemini', model, task, status: 'error', latencyMs: Date.now() - startedAt, ...usage, ...diagnostics, ...(error instanceof AiProviderError ? error.diagnostics : {}), providerAttempts: attempts, retryAfterUsed, errorCode: error instanceof AiProviderError ? error.code : 'network' }); throw error; },
     ).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, promise);
     return promise;
@@ -188,7 +221,11 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     return Math.round(base * (0.8 + this.random() * 0.4));
   }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs): Promise<T> {
+  private isLongTask(task: AiTask): boolean { return task === 'generate_trip' || task === 'analyze_text'; }
+  private timeoutFor(task: AiTask): number { return this.isLongTask(task) ? this.longTaskTimeoutMs : this.timeoutMs; }
+  private retryBudgetFor(task: AiTask): number { return this.isLongTask(task) ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
+
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -199,13 +236,21 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
         body: JSON.stringify({ systemInstruction: { parts: [{ text: prompt.systemInstruction }] }, contents: [{ role: 'user', parts: [{ text: prompt.userData }] }], generationConfig: { responseMimeType: 'application/json', responseJsonSchema: toGeminiResponseJsonSchema(schema, compatibility) } }),
       });
       if (!response.ok) throw classify(response.status, response.headers.get('retry-after'));
-      const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
+      const body = await response.json() as { candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
       const usage = { inputTokens: body.usageMetadata?.promptTokenCount, outputTokens: body.usageMetadata?.candidatesTokenCount };
       captureUsage(usage);
       this.options.onUsage?.(usage);
-      const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new AiProviderError('invalid_output', false);
-      try { return schema.parse(JSON.parse(text)); } catch (error) { throw new AiProviderError('invalid_output', false, undefined, error); }
+      const candidate = body.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
+      const diagnostics: AiOutputDiagnostics = { candidateCount: body.candidates?.length ?? 0, finishReason: typeof candidate?.finishReason === 'string' ? candidate.finishReason : undefined, hasText: Boolean(text) };
+      captureDiagnostics(diagnostics);
+      if (!text) throw new AiProviderError('invalid_output', false, undefined, undefined, undefined, { ...diagnostics, invalidOutputStage: 'missing_text' });
+      let output: unknown;
+      try { output = JSON.parse(text); } catch (error) { throw new AiProviderError('invalid_output', false, undefined, error, undefined, { ...diagnostics, invalidOutputStage: 'json_parse' }); }
+      try { return schema.parse(output); } catch (error) {
+        const schemaDiagnostics: AiOutputDiagnostics = error instanceof ZodError ? { ...diagnostics, invalidOutputStage: 'schema_validation', schemaIssueCount: error.issues.length, schemaIssueCodes: [...new Set(error.issues.map((issue) => issue.code))].slice(0, 10), schemaIssuePaths: error.issues.slice(0, 10).map((issue) => issue.path.map((part) => typeof part === 'number' ? String(part) : String(part).replace(/[^a-zA-Z0-9_.-]/g, '_')).join('.').slice(0, 160)) } : { ...diagnostics, invalidOutputStage: 'schema_validation' };
+        throw new AiProviderError('invalid_output', false, undefined, error, undefined, schemaDiagnostics);
+      }
     } catch (error) {
       if (error instanceof AiProviderError) throw error;
       if (error instanceof Error && error.name === 'AbortError') throw new AiProviderError('timeout', true, undefined, error);

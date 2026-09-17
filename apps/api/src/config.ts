@@ -57,6 +57,8 @@ export interface ApiConfig {
   geminiModel: string;
   geminiIntentModel: string;
   geminiTimeoutMs: number;
+  geminiLongTaskTimeoutMs: number;
+  geminiLongTaskRetryBudgetMs: number;
   geminiMaxRetries: number;
   geminiMaxConcurrency: number;
   dbMaxConnections: number;
@@ -94,8 +96,10 @@ export function loadApiConfig(): ApiConfig {
     geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiIntentModel: process.env.GEMINI_INTENT_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     geminiTimeoutMs: integer('GEMINI_TIMEOUT_MS', 15_000, 1000, 120_000),
-    geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 5),
-    geminiMaxConcurrency: integer('GEMINI_MAX_CONCURRENCY', 2, 1, 20),
+    geminiLongTaskTimeoutMs: integer('GEMINI_LONG_TASK_TIMEOUT_MS', 40_000, 15_000, 60_000),
+    geminiLongTaskRetryBudgetMs: integer('GEMINI_LONG_TASK_RETRY_BUDGET_MS', 45_000, 40_000, 60_000),
+    geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 2),
+    geminiMaxConcurrency: integer('GEMINI_MAX_CONCURRENCY', 1, 1, 1),
     dbMaxConnections: integer('DB_MAX_CONNECTIONS', 10, 1, 50),
     dbConnectionTimeoutMs: integer('DB_CONNECTION_TIMEOUT_MS', 5000, 100, 60_000),
     dbIdleTimeoutMs: integer('DB_IDLE_TIMEOUT_MS', 30_000, 1000, 600_000),

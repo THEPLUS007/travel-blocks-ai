@@ -17,3 +17,13 @@ AI 작업은 `extractIntent`, `generateTrip`, `analyzeText`, `rankPlaces` 전용
 ## AI run observability
 
 Gemini의 각 logical operation은 HTTP retry attempt 수와 무관하게 `extract_intent`, `generate_trip`, `analyze_text`, `rank_places` 중 하나의 lifecycle event를 생성합니다. Event에는 provider, 실제 선택 model, task, success/error status, 전체 latency, provider가 제공한 input/output token 수, 알려진 error code만 포함됩니다. Prompt, 원문 provider response, API key는 포함하지 않습니다. Observer는 callback boundary이므로 `packages/ai`는 PostgreSQL을 import하지 않습니다. Telemetry insert 실패는 sanitized server log에만 기록되고 성공한 AI 결과를 실패시키지 않습니다.
+
+## Free-tier guardrails and safe diagnostics
+
+Production serializes Gemini work with `GEMINI_MAX_CONCURRENCY=1`. `extract_intent` and `rank_places` use `GEMINI_TIMEOUT_MS` (15 seconds by default); `generate_trip` and `analyze_text` use `GEMINI_LONG_TASK_TIMEOUT_MS` (40 seconds by default) with `GEMINI_LONG_TASK_RETRY_BUDGET_MS` (45 seconds by default).
+
+Long-task client timeouts are terminal and are not retried, because inference may already have consumed quota. Retryable 429 and transient 500/502/503/504 responses retain bounded provider-owned retry with valid `Retry-After` preferred over jittered exponential backoff. There is no outer shell or validation retry.
+
+Lifecycle events include provider attempt count and whether a `Retry-After` delay was used. The server journals only safe event metadata before sending the existing persistent fields to observability storage; this requires no database migration.
+
+Invalid structured output is classified as `missing_text`, `json_parse`, or `schema_validation`. Safe metadata may include candidate count, finish reason, text presence, and capped Zod issue codes/paths. Generated text, raw JSON responses, issue values, prompts, API keys, and credentials are never included.

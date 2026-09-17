@@ -35,3 +35,61 @@ const response = (value: unknown, status = 200) => new Response(JSON.stringify(s
     expect(onObserverError).toHaveBeenCalledOnce();
   });
 });
+
+describe('AI safe invalid-output diagnostics', () => {
+  it.each([
+    ['missing_text', { candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [] } }] }, 'MAX_TOKENS'],
+    ['json_parse', { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{raw-only-marker' }] } }] }, 'STOP'],
+    ['schema_validation', { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ trip: {} }) }] } }] }, 'STOP'],
+  ])('records %s without raw generated text', async (stage, body, finishReason) => {
+    const events: AiRunEvent[] = [];
+    const provider = new GeminiTravelAiProvider({ apiKey: 'x', observer: { record: (event) => events.push(event) }, fetch: async () => new Response(JSON.stringify(body)) });
+    await expect(provider.generateTrip({ prompt: '서울' })).rejects.toMatchObject({ code: 'invalid_output' });
+    expect(events).toEqual([expect.objectContaining({ task: 'generate_trip', status: 'error', errorCode: 'invalid_output', invalidOutputStage: stage, candidateCount: 1, finishReason })]);
+    expect(JSON.stringify(events)).not.toContain('raw-only-marker');
+  });
+});
+
+describe('task-specific Gemini timeouts (mock only)', () => {
+  it('allows a long generate task to exceed the short timeout within the long timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(() => new Promise<Response>((resolve) => setTimeout(() => resolve(response(validPlan)), 5)));
+      const result = new GeminiTravelAiProvider({ apiKey: 'x', timeoutMs: 1, longTaskTimeoutMs: 40, maxRetries: 0, fetch: fetcher }).generateTrip({ prompt: '서울' });
+      await vi.advanceTimersByTimeAsync(5);
+      await expect(result).resolves.toEqual(validPlan);
+      expect(fetcher).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+describe('long timeout retry policy (mock only)', () => {
+  it.each([
+    ['generate_trip', (provider: GeminiTravelAiProvider) => provider.generateTrip({ prompt: '서울' })],
+    ['analyze_text', (provider: GeminiTravelAiProvider) => provider.analyzeText({ content: '부산 2박 3일 기록' })],
+  ])('%s timeout uses one attempt and no retry', async (_task, run) => {
+    vi.useFakeTimers();
+    try {
+      const events: AiRunEvent[] = []; const fetcher = vi.fn((_: unknown, init?: RequestInit) => new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('x', 'AbortError')))));
+      const provider = new GeminiTravelAiProvider({ apiKey: 'x', timeoutMs: 1, longTaskTimeoutMs: 1, maxRetries: 2, observer: { record: (event) => events.push(event) }, fetch: fetcher });
+      const result = run(provider); const assertion = expect(result).rejects.toMatchObject({ code: 'timeout' });
+      await vi.advanceTimersByTimeAsync(1); await assertion;
+      expect(fetcher).toHaveBeenCalledOnce();
+      expect(events).toEqual([expect.objectContaining({ status: 'error', errorCode: 'timeout', providerAttempts: 1 })]);
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+describe('short task retry policy (mock only)', () => {
+  it('keeps bounded retry for rank_places', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn((_: unknown, init?: RequestInit) => new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('x', 'AbortError')))));
+      const provider = new GeminiTravelAiProvider({ apiKey: 'x', timeoutMs: 1, longTaskTimeoutMs: 40, maxRetries: 1, wait: async () => undefined, fetch: fetcher });
+      const result = provider.rankPlaces({ trip: validPlan.trip, day: { id: 'd1', dayNumber: 1, title: '첫날', blocks: [] }, existingPlaces: [], candidates: [{ candidateId: 'google:p1', provider: 'google', providerPlaceId: 'p1', name: '장소', formattedAddress: '서울', latitude: 1, longitude: 2, category: 'sightseeing', city: '서울', region: '' }] });
+      const assertion = expect(result).rejects.toMatchObject({ code: 'timeout' });
+      await vi.advanceTimersByTimeAsync(1); await Promise.resolve(); await vi.advanceTimersByTimeAsync(1); await assertion;
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); }
+  });
+});

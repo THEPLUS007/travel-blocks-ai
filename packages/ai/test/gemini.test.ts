@@ -8,7 +8,7 @@ describe('Gemini adapter',()=>{
   it('malformed output을 차단한다',async()=>expect(new GeminiTravelAiProvider({apiKey:'test',fetch:async()=>response(gemini('{bad'))}).generateTrip({prompt:'서울'})).rejects.toMatchObject({code:'invalid_output'}));
   it.each([[429,'rate_limit'],[503,'unavailable']])('%s 오류를 분류한다',async(status,code)=>expect(new GeminiTravelAiProvider({apiKey:'test',maxRetries:0,fetch:async()=>response({},status as number)}).generateTrip({prompt:'서울'})).rejects.toMatchObject({code}));
   it('빈 결과를 차단한다',async()=>expect(new GeminiTravelAiProvider({apiKey:'test',fetch:async()=>response({candidates:[]})}).generateTrip({prompt:'서울'})).rejects.toBeInstanceOf(AiProviderError));
-  it('timeout을 분류한다',async()=>expect(new GeminiTravelAiProvider({apiKey:'test',timeoutMs:1,maxRetries:0,fetch:(_,init)=>new Promise((_,reject)=>init?.signal?.addEventListener('abort',()=>reject(new DOMException('x','AbortError'))))}).generateTrip({prompt:'서울'})).rejects.toMatchObject({code:'timeout'}));
+  it('timeout을 분류한다',async()=>expect(new GeminiTravelAiProvider({apiKey:'test',timeoutMs:1,longTaskTimeoutMs:1,maxRetries:0,fetch:(_,init)=>new Promise((_,reject)=>init?.signal?.addEventListener('abort',()=>reject(new DOMException('x','AbortError'))))}).generateTrip({prompt:'서울'})).rejects.toMatchObject({code:'timeout'}));
 });
 
 

@@ -57,9 +57,11 @@ try {
         model: config.geminiModel,
         intentModel: config.geminiIntentModel,
         timeoutMs: config.geminiTimeoutMs,
+        longTaskTimeoutMs: config.geminiLongTaskTimeoutMs,
+        longTaskRetryBudgetMs: config.geminiLongTaskRetryBudgetMs,
         maxRetries: config.geminiMaxRetries,
         maxConcurrency: config.geminiMaxConcurrency,
-        observer: aiRuns,
+        observer: { record: async (event) => { console.info(`[Gemini] run ${JSON.stringify(event)}`); await aiRuns.record(event); } },
         onObserverError: (error) => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); },
       })
     : new UnavailableAiProvider();
