@@ -17,6 +17,7 @@
     "test:unit": "npm run test -w @travel-blocks/domain && npm run test -w @travel-blocks/ai",
     "test:api": "npm run test -w @travel-blocks/api",
     "test:e2e": "npm run test:e2e -w @travel-blocks/web",
+    "eval": "npm run eval -w @travel-blocks/api",
     "test:mcp": "npm run test -w @travel-blocks/mcp",
     "db:generate": "npm run db:generate -w @travel-blocks/api",
     "db:migrate": "npm run db:migrate -w @travel-blocks/api",

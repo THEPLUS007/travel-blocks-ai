@@ -168,6 +168,7 @@ Nginx provides the public HTTPS boundary, while the Fastify API runs under syste
 | [Places Compatibility](docs/PLACES-COMPATIBILITY.md) | Google Places API response handling |
 | [Security](docs/SECURITY.md) | Security controls and trust boundaries |
 | [Deployment](docs/DEPLOYMENT.md) | Production deployment and rollback runbook |
+| [Evaluation](docs/EVALUATION.md) | Deterministic AI quality baseline |
 
 The [documentation index](docs/README.md) groups these references by topic.
 

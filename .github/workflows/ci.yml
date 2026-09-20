@@ -23,6 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      - run: npm run eval
       - run: npm audit --omit=dev
       - name: Shell syntax and operations regression
         run: |
