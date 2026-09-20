@@ -7,5 +7,6 @@ export class TestAiProvider implements TravelAiProvider {async extractIntent(inp
 export class TestPlaceProvider {async search(_input:PlaceSearchInput):Promise<VerifiedPlace[]>{return structuredClone(Object.values(places))}async getPlace(id:string){return Object.values(places).find((place)=>place.providerPlaceId===id)??null}}
 
 export * from './evaluation/expectedPlaces.js';
+export * from './evaluation/placeCoordinates.js';
 export * from './evaluation/scenarios.js';
 export * from './evaluation/samplePlans.js';

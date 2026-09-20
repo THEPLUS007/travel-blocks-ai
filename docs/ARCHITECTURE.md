@@ -47,7 +47,7 @@ Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 �
 
 AI `generateTrip`과 `analyzeText` 결과는 API 응답 전에 `packages/domain`의 pure validator를 통과해야 합니다. Validator는 Day/Block/Connection ID와 참조 무결성, 순차 Day 번호, verified-place identity/candidate membership, 일정 밀도 상한을 검사하고 안정적인 machine-readable issue code를 생성합니다. 유효하지 않은 AI 결과는 provider 원문이나 내부 issue를 노출하지 않는 `ITINERARY_INVALID` API 오류로 변환됩니다.
 
-현재 provider/application 모델에는 경로 소요 시간과 영업시간 데이터가 없으므로 route feasibility와 opening-hours feasibility는 의도적으로 **DEFERRED**입니다. 구현되지 않은 검증을 완료된 것으로 간주하지 않습니다.
+P1-2는 verified place 좌표를 이용한 deterministic straight-line geographic feasibility 경고를 domain/evaluation에만 제공합니다. 이는 실제 경로·이동 시간·교통·비용을 계산하지 않으며 runtime 응답, TravelBlock schema, DB에는 저장하지 않습니다. 실제 route-time feasibility와 opening-hours feasibility는 provider-backed 데이터가 필요하므로 여전히 **DEFERRED**입니다. 구현되지 않은 검증을 완료된 것으로 간주하지 않습니다.
 
 ## Production serving boundary
 

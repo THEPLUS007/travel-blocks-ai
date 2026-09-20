@@ -23,7 +23,7 @@ Fixture place IDs are synthetic `fixture:*` identities, not API response dumps o
 
 Error checks fail a scenario: `destination_match`, `duration_match`, `day_number_continuity`, `max_blocks_per_day`, `duplicate_block_id`, `duplicate_provider_place`, `verified_place_contract`, and `connection_reference_integrity`.
 
-Warning checks do not change the process exit status: `requested_category_presence`, `mobility_preference_basic_check`, and optional `requested_avoidance_violation`. Minimal-walking/accessibility checks only count declared `walk` connections; they do not estimate real distance or route duration.
+Warning checks do not change the process exit status: `requested_category_presence`, `mobility_preference_basic_check`, `route_distance_feasibility`, and optional `requested_avoidance_violation`. Minimal-walking/accessibility checks only count declared `walk` connections; they do not estimate real distance or route duration.
 
 The evaluator delegates structural checks to `validateItinerary` in `@travel-blocks/domain`. It adds request-adherence checks rather than duplicating domain validation.
 
@@ -37,6 +37,16 @@ The runner prints each scenario's PASS/FAIL, deterministic passed/total score, a
 
 `apps/api/test/evaluation.test.ts` verifies all good fixtures, the intentional error and warning cases, and repeatability. CI Quality runs `npm run eval` after the existing verification suite.
 
+## Route feasibility (P1-2)
+
+`route_distance_feasibility` is a deterministic geographic heuristic. It reads the verified places in each Day in block-array order, ignores non-place blocks, and evaluates each consecutive verified-place pair with the Haversine great-circle calculation. The result is named `straightLineKm`; it is not a driving, walking, transit, or route distance, and it never estimates travel time, traffic, cost, or a transport mode.
+
+Coordinates are minimal curated evaluation data in `placeCoordinates.ts`, keyed by the canonical `provider:providerPlaceId` identity. They are not Google Places response dumps. The route check does not add coordinates to `TravelBlock`, change an API response schema, or require a database migration.
+
+Scenarios may configure `maxConsecutiveStraightLineKm` and `maxDailyStraightLineKm`. Exceeding either threshold emits warning-severity `long_consecutive_distance` or `excessive_daily_geographic_spread`; warnings lower the deterministic quality score but do not make a scenario fail. Thresholds are scenario heuristics, not universal travel rules.
+
+Every result records coverage: possible, evaluated, and skipped consecutive segments. Missing or invalid coordinates are skipped with an explicit unavailable reason; they are never replaced with `0,0` or a zero-distance segment. Daily metrics include consecutive segment count, maximum consecutive straight-line distance, and total straight-line path distance. That total is also a heuristic, not actual travel distance.
+
 ## Current limits
 
-This baseline does not judge subjective itinerary quality, live model differences, actual route duration/distance, opening hours, costs, or provider availability. Those require P1-2+ provider-backed evaluation and remain outside this deterministic baseline.
+This baseline does not judge subjective itinerary quality, live model differences, actual routed duration or distance, opening hours, costs, or provider availability. Actual routing requires a future routing provider; it remains outside this network-independent baseline.

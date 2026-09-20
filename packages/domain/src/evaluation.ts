@@ -1,5 +1,6 @@
 import type { TravelBlockCategory, TravelPlanDraft } from '@travel-blocks/shared';
 import { MAX_BLOCKS_PER_DAY, validateItinerary } from './itineraryValidation.js';
+import { checkRouteFeasibility, type RouteCoordinate } from './routeFeasibility.js';
 
 export type EvaluationSeverity = 'error' | 'warning' | 'info';
 export type EvaluationRule =
@@ -13,6 +14,7 @@ export type EvaluationRule =
   | 'connection_reference_integrity'
   | 'requested_category_presence'
   | 'mobility_preference_basic_check'
+  | 'route_distance_feasibility'
   | 'requested_avoidance_violation';
 
 export interface EvaluationIntent {
@@ -26,6 +28,9 @@ export interface EvaluationIntent {
 export interface EvaluationConstraints {
   verifiedCandidateIds?: readonly string[];
   maxWalkConnections?: number;
+  routeCoordinates?: Readonly<Record<string, RouteCoordinate>>;
+  maxConsecutiveStraightLineKm?: number;
+  maxDailyStraightLineKm?: number;
 }
 
 export interface EvaluationScenario {
@@ -84,6 +89,12 @@ export function evaluateTravelPlan(scenario: EvaluationScenario, plan: TravelPla
   const walkConnections = plan.connections.filter((connection) => connection.transportMode === 'walk').length;
   const connectionModes = new Set(plan.connections.map((connection) => connection.transportMode));
   const maxWalkConnections = scenario.constraints.maxWalkConnections ?? 1;
+  const routeFeasibility = scenario.constraints.routeCoordinates
+    ? checkRouteFeasibility(plan, scenario.constraints.routeCoordinates, {
+        maxConsecutiveStraightLineKm: scenario.constraints.maxConsecutiveStraightLineKm,
+        maxDailyStraightLineKm: scenario.constraints.maxDailyStraightLineKm,
+      })
+    : undefined;
   const searchablePlanText = plan.days
     .flatMap((day) => day.blocks.map((block) => [block.title, block.location, block.memo].filter(Boolean).join(' ')))
     .join(' ')
@@ -100,6 +111,14 @@ export function evaluateTravelPlan(scenario: EvaluationScenario, plan: TravelPla
     connection_reference_integrity: check('connection_reference_integrity', !validation.issues.some((issue) => connectionIssueCodes.has(issue.code)), 'error', 'Connections must have unique IDs and reference blocks in their declared day.'),
     requested_category_presence: check('requested_category_presence', requestedCategories.every((category) => categorySet.has(category)), 'warning', requestedCategories.length ? `Requested categories: ${requestedCategories.join(', ')}.` : 'No requested categories were declared.'),
     mobility_preference_basic_check: check('mobility_preference_basic_check', mobilityMatches(scenario.expectedIntent.mobilityPreference, walkConnections, maxWalkConnections, connectionModes), 'warning', mobilityMessage(scenario.expectedIntent.mobilityPreference, walkConnections, maxWalkConnections)),
+    route_distance_feasibility: check(
+      'route_distance_feasibility',
+      !routeFeasibility || routeFeasibility.warnings.length === 0,
+      'warning',
+      routeFeasibility
+        ? `${routeFeasibility.coverage.evaluatedSegments}/${routeFeasibility.coverage.possibleSegments} geographic segments evaluated.`
+        : 'No route coordinates were supplied for this scenario.',
+    ),
     requested_avoidance_violation: check('requested_avoidance_violation', !includesAny(searchablePlanText, scenario.expectedIntent.avoidances ?? []), 'warning', scenario.expectedIntent.avoidances?.length ? `Avoided terms: ${scenario.expectedIntent.avoidances.join(', ')}.` : 'No avoidance terms were declared.'),
   };
 

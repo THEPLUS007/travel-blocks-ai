@@ -1,5 +1,6 @@
 import type { EvaluationRule, EvaluationScenario } from '@travel-blocks/domain';
 import { evaluationCandidateIds } from './expectedPlaces.js';
+import { evaluationCoordinatesForScenario } from './placeCoordinates.js';
 
 const baselineRules: readonly EvaluationRule[] = [
   'destination_match',
@@ -16,6 +17,8 @@ const baselineRules: readonly EvaluationRule[] = [
 
 function scenario(input: Omit<EvaluationScenario, 'constraints' | 'qualityRules'> & {
   maxWalkConnections?: number;
+  maxConsecutiveStraightLineKm?: number;
+  maxDailyStraightLineKm?: number;
   includeAvoidanceRule?: boolean;
 }): EvaluationScenario {
   return {
@@ -26,10 +29,13 @@ function scenario(input: Omit<EvaluationScenario, 'constraints' | 'qualityRules'
     constraints: {
       verifiedCandidateIds: evaluationCandidateIds(input.id, input.expectedIntent.durationDays),
       maxWalkConnections: input.maxWalkConnections,
+      routeCoordinates: evaluationCoordinatesForScenario(input.id, input.expectedIntent.city, input.expectedIntent.durationDays),
+      maxConsecutiveStraightLineKm: input.maxConsecutiveStraightLineKm ?? 10,
+      maxDailyStraightLineKm: input.maxDailyStraightLineKm ?? 20,
     },
     qualityRules: input.includeAvoidanceRule
-      ? [...baselineRules, 'requested_avoidance_violation']
-      : baselineRules,
+      ? [...baselineRules, 'route_distance_feasibility', 'requested_avoidance_violation']
+      : [...baselineRules, 'route_distance_feasibility'],
   };
 }
 

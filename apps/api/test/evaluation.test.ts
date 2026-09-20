@@ -58,6 +58,29 @@ describe('deterministic travel quality evaluation', () => {
     expect(checkFor('EVAL-003', 'mobility_preference_basic_check', badPlans['EVAL-003'])).toMatchObject({ passed: false, severity: 'warning' });
   });
 
+  it('reports an excessive geographic sequence as a warning without failing the scenario', () => {
+    const scenario = structuredClone(evaluationScenarioById('EVAL-003'));
+    const routeCoordinates = scenario.constraints.routeCoordinates;
+    if (!routeCoordinates) throw new Error('Route coordinates are required for this fixture.');
+    scenario.constraints = {
+      ...scenario.constraints,
+      routeCoordinates: {
+        ...routeCoordinates,
+        'fixture:eval-003-place-2': { latitude: 35.1796, longitude: 129.0756 },
+      },
+      maxConsecutiveStraightLineKm: 20,
+      maxDailyStraightLineKm: 40,
+    };
+
+    const result = evaluateTravelPlan(scenario, goodPlans['EVAL-003']);
+    expect(result.passed).toBe(true);
+    expect(result.score.passed).toBe(result.score.total - 1);
+    expect(result.checks.find((check) => check.rule === 'route_distance_feasibility')).toMatchObject({
+      passed: false,
+      severity: 'warning',
+    });
+  });
+
   it('returns the same result for the same fixture', () => {
     expect(resultFor('EVAL-004')).toEqual(resultFor('EVAL-004'));
   });

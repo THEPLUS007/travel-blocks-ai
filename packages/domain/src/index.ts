@@ -31,3 +31,4 @@ export function normalizePlan(days: TravelDay[], connections: TravelConnection[]
 
 export * from './itineraryValidation.js';
 export * from './evaluation.js';
+export * from './routeFeasibility.js';
