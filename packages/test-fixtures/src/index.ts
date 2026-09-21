@@ -10,3 +10,6 @@ export * from './evaluation/expectedPlaces.js';
 export * from './evaluation/placeCoordinates.js';
 export * from './evaluation/scenarios.js';
 export * from './evaluation/samplePlans.js';
+export * from './evaluation/placeOpeningHours.js';
+export * from './evaluation/placeOpeningHours.js';
+export * from './evaluation/placeOpeningHours.js';

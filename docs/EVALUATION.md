@@ -50,3 +50,11 @@ Every result records coverage: possible, evaluated, and skipped consecutive segm
 ## Current limits
 
 This baseline does not judge subjective itinerary quality, live model differences, actual routed duration or distance, opening hours, costs, or provider availability. Actual routing requires a future routing provider; it remains outside this network-independent baseline.
+
+## Opening Hours Feasibility (P1-3)
+
+Opening-hours evaluation keeps provider facts separate from feasibility decisions. A lazy place-details capability normalizes Google `currentOpeningHours` and `regularOpeningHours` into provider-neutral periods with `source`, provider identity, `retrievedAt`, timezone, business status, and data-quality flags. Search candidates do not trigger opening-hours lookups.
+
+The pure domain check accepts an explicit trip start date and the free-form block time only when it is an unambiguous `HH:MM` or `HH:MM-HH:MM` value. It handles Google weekday numbering, overnight periods, and 24-hour periods. `currentHours` is preferred when its date coverage includes the target date; regular hours are a heuristic and produce `caution` because special closures are not guaranteed. Missing hours, dates, or parseable times produce `unknown`; no AI/category guessing is used. Permanent closure is `infeasible`, while temporary closure is conservative `caution`.
+
+This is geographic/schedule feasibility only, not a routing API or travel-time estimate. The evaluation rule is warning-only, deterministic, and network-independent. Coordinate coverage and opening-hours coverage remain explicit; TravelBlock and Trip schemas are unchanged, and CI performs no live provider calls.

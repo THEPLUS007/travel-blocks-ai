@@ -1,6 +1,7 @@
 import type { EvaluationRule, EvaluationScenario } from '@travel-blocks/domain';
 import { evaluationCandidateIds } from './expectedPlaces.js';
 import { evaluationCoordinatesForScenario } from './placeCoordinates.js';
+import { evaluationOpeningHoursForScenario } from './placeOpeningHours.js';
 
 const baselineRules: readonly EvaluationRule[] = [
   'destination_match',
@@ -31,11 +32,13 @@ function scenario(input: Omit<EvaluationScenario, 'constraints' | 'qualityRules'
       maxWalkConnections: input.maxWalkConnections,
       routeCoordinates: evaluationCoordinatesForScenario(input.id, input.expectedIntent.city, input.expectedIntent.durationDays),
       maxConsecutiveStraightLineKm: input.maxConsecutiveStraightLineKm ?? 10,
+      tripStartDate: '2026-10-12',
+      openingHoursByPlace: evaluationOpeningHoursForScenario(input.id, input.expectedIntent.durationDays),
       maxDailyStraightLineKm: input.maxDailyStraightLineKm ?? 20,
     },
     qualityRules: input.includeAvoidanceRule
-      ? [...baselineRules, 'route_distance_feasibility', 'requested_avoidance_violation']
-      : [...baselineRules, 'route_distance_feasibility'],
+      ? [...baselineRules, 'route_distance_feasibility', 'opening_hours_feasibility', 'requested_avoidance_violation']
+      : [...baselineRules, 'route_distance_feasibility', 'opening_hours_feasibility'],
   };
 }
 
