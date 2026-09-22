@@ -55,9 +55,11 @@ P1-2와 P1-3 결과는 현재 deterministic domain/evaluation foundation입니�
 
 ## Trust and execution boundaries
 
-Application은 `TravelAiProvider` 호환 `AiTaskRouter`를 호출하고, Router는 `AiRoutingPolicy`의 단일 pre-execution decision과 capability 검증을 거쳐 선택된 provider에 정확히 한 번 위임합니다. 기본 policy는 Gemini-only이며, explicit `hybrid` opt-in에서는 enabled·registered·`intent_extraction` capability·`healthy` readiness를 모두 만족한 self-hosted provider만 `extract_intent`에 선택될 수 있습니다. `generate_trip`, `analyze_text`, `rank_places`는 계속 Gemini-only입니다. Gemini와 self-hosted adapter는 prompt/model/HTTP/structured output/retry/observability를 각각 소유하고, Router는 prompt, parsing, retry, timeout, fallback, grounding, feasibility를 소유하지 않습니다. Post-execution fallback과 dynamic quality/cost/latency routing은 구현되지 않았습니다.
+Application invokes a `TravelAiProvider`-compatible `AiTaskRouter`. For each logical operation the Router creates an immutable, payload-free execution scope, calls `AiRoutingPolicy` once, validates the selected capability, and delegates once. The resolved scope carries execution ID, task, capability, selected provider/model, routing mode/reason, start time, and safe decision metadata; terminal provenance carries the same ID plus success/failure, completion/duration, and an existing normalized provider failure category. Default policy remains Gemini-only; guarded `hybrid` can select self-hosted only for `extract_intent`. Gemini and self-hosted adapters continue to own prompt/model/HTTP/structured output/retry/lifecycle events. Router owns no prompt, parsing, retry, timeout, fallback, grounding, feasibility, DB write, or provider health probe.
 
-Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`과 quality flag가 포함됩니다. 더 넓은 provider resilience, AI scope/provenance, model routing은 현재 구조가 아니라 [Roadmap](ROADMAP.md)의 P1-4~P1-5 목표입니다. 경계 규칙은 [Invariants](INVARIANTS.md), 실제 구현 상태는 [Current Status](CURRENT_STATUS.md)를 따릅니다.
+Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`과 quality flag가 포함됩니다. AI execution scope/provenance is now observer-only; broader source-level scope, benchmark gating, and model-quality work remain roadmap concerns. 경계 규칙은 [Invariants](INVARIANTS.md), 실제 구현 상태는 [Current Status](CURRENT_STATUS.md)를 따릅니다.
+
+AI execution provenance is distinct from factual provenance: Places/opening-hours provenance records real-world provider facts and retrieval information, while AI provenance records only safe execution metadata. The latter is observer-only in P1-5E—never persisted, returned through public API, or attached to `Trip`/`TravelBlock`; it excludes input, output, prompt, raw response, secrets, headers, and user content. Observer errors cannot change task results.
 
 ## Production serving boundary
 

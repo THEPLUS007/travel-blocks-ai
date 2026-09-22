@@ -86,6 +86,7 @@ try {
         return new AiTaskRouter(registrations, {
           policy,
           observer: { record: (decision) => console.info(`[AI Routing] ${JSON.stringify(decision)}`) },
+          provenanceObserver: { record: (provenance) => console.info(`[AI Provenance] ${JSON.stringify(provenance)}`) },
           onObserverError: onAiObserverError,
         });
       })()

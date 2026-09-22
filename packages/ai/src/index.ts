@@ -12,8 +12,10 @@ import { AI_TASK_DEFINITIONS, type AiTask, type AiTimeoutClass } from './tasks.j
 export { AI_TASK_DEFINITIONS } from './tasks.js';
 export type { AiCapability, AiFallbackPolicy, AiTaskDefinition, AiTaskInput, AiTaskOutput, AiTimeoutClass, TaskDefinition } from './tasks.js';
 export { AI_TASK_ROUTING, AiTaskRouter, GEMINI_CAPABILITIES, GEMINI_PROVIDER_ID, createGeminiAiRegistration, createSelfHostedAiRegistration } from './router.js';
-export type { AiProviderId, AiProviderRegistration, AiRoutingObserver, AiTaskRouterOptions } from './router.js';
+export type { AiProviderId, AiProviderModelSource, AiProviderRegistration, AiRoutingEvent, AiRoutingObserver, AiTaskRouterOptions } from './router.js';
 export { AiRoutingPolicy, StaticAiProviderHealthSource } from './routingPolicy.js';
+export { DefaultAiExecutionScopeFactory, resolveAiExecutionScope, AI_EXECUTION_SCOPE_VERSION } from './execution.js';
+export type { AiExecutionObserver, AiExecutionOutcome, AiExecutionScope, AiExecutionScopeFactory, AiExecutionScopeSeed, AiProvenance, AiProvenanceFailureCategory, DefaultAiExecutionScopeFactoryOptions } from './execution.js';
 export type { AiProviderHealth, AiProviderHealthSource, AiRoutingDecision, AiRoutingMode, AiRoutingPolicyOptions, AiRoutingReason } from './routingPolicy.js';
 export { SELF_HOSTED_CAPABILITIES, SELF_HOSTED_PROVIDER_ID, SelfHostedHttpTransport, SelfHostedTravelAiProvider } from './selfHosted.js';
 export type { SelfHostedAiTransport, SelfHostedHttpTransportOptions, SelfHostedTransportRequest, SelfHostedTransportResponse, SelfHostedTravelAiProviderOptions } from './selfHosted.js';
@@ -155,6 +157,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     this.waiter = options.wait ?? wait;
     this.random = options.random ?? Math.random;
   }
+  modelForTask(task: AiTask): string { return task === 'extract_intent' ? this.intentModel : this.model; }
 
   extractIntent(input: GenerateTripInput): Promise<TravelIntent> {
     const parsed = AI_TASK_DEFINITIONS.extract_intent.inputSchema.parse(input);

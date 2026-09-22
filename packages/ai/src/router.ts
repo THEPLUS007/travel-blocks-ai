@@ -7,8 +7,9 @@ import type {
   TripPlanningInput,
   TravelPlanDraft,
 } from '@travel-blocks/shared';
-import type { TravelAiProvider } from './index.js';
+import { AiProviderError, type TravelAiProvider } from './index.js';
 import { AiRoutingPolicy, type AiRoutingDecision } from './routingPolicy.js';
+import { DefaultAiExecutionScopeFactory, resolveAiExecutionScope, type AiExecutionObserver, type AiExecutionScopeFactory, type AiProvenanceFailureCategory } from './execution.js';
 import { AI_TASK_DEFINITIONS, type AiCapability, type AiTask } from './tasks.js';
 
 export type AiProviderId = 'gemini' | 'self_hosted';
@@ -17,6 +18,11 @@ export interface AiProviderRegistration {
   readonly id: AiProviderId;
   readonly provider: TravelAiProvider;
   readonly capabilities: ReadonlySet<AiCapability>;
+  readonly modelForTask?: (task: AiTask) => string | 'unknown';
+}
+
+export interface AiProviderModelSource {
+  modelForTask(task: AiTask): string;
 }
 
 export const GEMINI_PROVIDER_ID: AiProviderId = 'gemini';
@@ -42,6 +48,7 @@ export function createGeminiAiRegistration(provider: TravelAiProvider): AiProvid
     id: GEMINI_PROVIDER_ID,
     provider,
     capabilities: new Set<AiCapability>(GEMINI_CAPABILITIES),
+    modelForTask: modelForTask(provider),
   };
 }
 
@@ -50,22 +57,38 @@ export function createSelfHostedAiRegistration(provider: TravelAiProvider): AiPr
     id: SELF_HOSTED_PROVIDER_ID,
     provider,
     capabilities: new Set<AiCapability>(SELF_HOSTED_CAPABILITIES),
+    modelForTask: modelForTask(provider),
   };
 }
 
+function modelForTask(provider: TravelAiProvider): (task: AiTask) => string | 'unknown' {
+  const source = provider as TravelAiProvider & Partial<AiProviderModelSource>;
+  return (task) => {
+    const model = source.modelForTask?.(task);
+    return typeof model === 'string' && model.trim() ? model : 'unknown';
+  };
+}
+
+export interface AiRoutingEvent extends AiRoutingDecision {
+  readonly executionId: string;
+}
+
 export interface AiRoutingObserver {
-  record(decision: AiRoutingDecision): void | Promise<void>;
+  record(decision: AiRoutingEvent): void | Promise<void>;
 }
 
 export interface AiTaskRouterOptions {
   readonly policy?: AiRoutingPolicy;
   readonly observer?: AiRoutingObserver;
   readonly onObserverError?: (error: unknown) => void;
+  readonly provenanceObserver?: AiExecutionObserver;
+  readonly executionScopeFactory?: AiExecutionScopeFactory;
 }
 
 export class AiTaskRouter implements TravelAiProvider {
   private readonly providers: ReadonlyMap<AiProviderId, AiProviderRegistration>;
   private readonly policy: AiRoutingPolicy;
+  private readonly executionScopeFactory: AiExecutionScopeFactory;
 
   constructor(registrations: readonly AiProviderRegistration[], private readonly options: AiTaskRouterOptions = {}) {
     const providers = new Map<AiProviderId, AiProviderRegistration>();
@@ -84,40 +107,60 @@ export class AiTaskRouter implements TravelAiProvider {
     }
     this.providers = providers;
     this.policy = options.policy ?? new AiRoutingPolicy({ registrations });
+    this.executionScopeFactory = options.executionScopeFactory ?? new DefaultAiExecutionScopeFactory();
   }
 
-  private providerFor(task: AiTask): TravelAiProvider {
+  private providerFor(task: AiTask, executionId: string): { readonly provider: TravelAiProvider; readonly decision: AiRoutingDecision; readonly model: string | 'unknown' } {
     const decision = this.policy.decide(task);
-    void this.observe(decision);
+    void this.observe({ ...decision, executionId });
     const registration = this.providers.get(decision.selectedProviderId);
     if (!registration) throw new Error(`No AI provider registered for task ${task}`);
     if (!registration.capabilities.has(decision.requiredCapability)) {
       throw new Error(`AI provider ${decision.selectedProviderId} does not support capability ${decision.requiredCapability} for task ${task}`);
     }
-    return registration.provider;
+    return { provider: registration.provider, decision, model: registration.modelForTask?.(task) ?? 'unknown' };
   }
 
-  private async observe(decision: AiRoutingDecision): Promise<void> {
+  private async observe(decision: AiRoutingEvent): Promise<void> {
     try { await this.options.observer?.record(decision); } catch (error) { this.options.onObserverError?.(error); }
   }
 
+  private async execute<T>(task: AiTask, delegate: (provider: TravelAiProvider) => Promise<T>): Promise<T> {
+    const seed = this.executionScopeFactory.create(task);
+    const selected = this.providerFor(task, seed.executionId);
+    const scope = resolveAiExecutionScope(seed, selected.decision, selected.model);
+    try {
+      const result = await delegate(selected.provider);
+      void this.observeProvenance(this.executionScopeFactory.complete(scope, 'success'));
+      return result;
+    } catch (error) {
+      const failureCategory: AiProvenanceFailureCategory = error instanceof AiProviderError ? error.code : 'unknown';
+      void this.observeProvenance(this.executionScopeFactory.complete(scope, 'failure', failureCategory));
+      throw error;
+    }
+  }
+
+  private async observeProvenance(provenance: Parameters<AiExecutionObserver['record']>[0]): Promise<void> {
+    try { await this.options.provenanceObserver?.record(provenance); } catch (error) { this.options.onObserverError?.(error); }
+  }
+
   extractIntent(input: GenerateTripInput): Promise<TravelIntent> {
-    return this.providerFor('extract_intent').extractIntent(input);
+    return this.execute('extract_intent', (provider) => provider.extractIntent(input));
   }
 
   planTrip(input: TripPlanningInput): Promise<TravelPlanDraft> {
-    return this.providerFor('generate_trip').planTrip(input);
+    return this.execute('generate_trip', (provider) => provider.planTrip(input));
   }
 
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft> {
-    return this.providerFor('generate_trip').generateTrip(input);
+    return this.execute('generate_trip', (provider) => provider.generateTrip(input));
   }
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
-    return this.providerFor('analyze_text').analyzeText(input);
+    return this.execute('analyze_text', (provider) => provider.analyzeText(input));
   }
 
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
-    return this.providerFor('rank_places').rankPlaces(input);
+    return this.execute('rank_places', (provider) => provider.rankPlaces(input));
   }
 }

@@ -197,6 +197,10 @@ Implement a typed, deterministic pre-execution policy. The safe default is Gemin
 
 Make the context boundary explicit: which Trip, Day, verified places and prior results an AI task may access. Attach safe execution provenance: provider, model, task, scope/source IDs, latency and fallback metadata. Do not store prompt or raw provider response.
 
+
+**Status: IN PROGRESS**
+
+P1-5E adds a provider-neutral, payload-free execution scope and terminal provenance observer at the Router boundary. Execution ID and clock are injectable; routing and provenance share the same ID. The scope records task/capability/selection metadata, not user content. Terminal provenance records provider/model/routing/outcome/duration and an existing normalized provider failure category when available. It does not persist to the DB or public API, and does not change routing, retry, fallback, prompts, schemas, or domain ownership.
 #### P1-5F — Benchmark / Production Quality Gate
 
 Compare Gemini and self-hosted candidates using fixed datasets. Measure schema success, task correctness, latency and failure behavior. Enable production routing only for provider-task pairs that pass declared thresholds; otherwise retain Gemini or fail explicitly.
