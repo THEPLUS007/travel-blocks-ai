@@ -130,7 +130,7 @@ P1-4 makes failure and incomplete data behavior measurable before a second LLM p
 
 ### P1-5 — AI Execution Platform
 
-**Status: DESIGN DEFINED**
+**Status: IN PROGRESS**
 
 Full name: **LLM Provider Abstraction · Model Routing · Self-hosted LLM · Scope · Provenance**
 
@@ -169,9 +169,13 @@ Deterministic feasibility assessment
 
 #### P1-5A — AI Task Contracts
 
+**Status: COMPLETE**
+
 Define task metadata and type-safe execution contracts for `extractIntent`, `generateTrip`, `analyzeText`, and `rankPlaces`. Record capability and timeout class without changing user-visible behavior. Establish the Gemini-only baseline used for later comparisons.
 
 #### P1-5B — LLM Gateway / Router Skeleton
+
+**Status: NEXT**
 
 Add the provider-neutral gateway and router boundary. Gemini remains the only enabled provider, so routing is deterministic and behavior-preserving. Model/provider names stop leaking into application use cases.
 

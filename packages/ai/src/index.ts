@@ -1,20 +1,16 @@
-import {
-  AnalyzeTextRequestSchema,
-  GenerateTripRequestSchema,
-  GenerateTripResponseSchema,
-  PlaceRankingInputSchema,
-  PlaceRankingResultSchema,
-  TravelIntentSchema,
-  TripPlanningInputSchema,
-  type AnalyzeTextInput,
-  type GenerateTripInput,
-  type PlaceRankingInput,
-  type PlaceRankingResult,
-  type TravelIntent,
-  type TripPlanningInput,
-  type TravelPlanDraft,
+import type {
+  AnalyzeTextInput,
+  GenerateTripInput,
+  PlaceRankingInput,
+  PlaceRankingResult,
+  TravelIntent,
+  TripPlanningInput,
+  TravelPlanDraft,
 } from '@travel-blocks/shared';
 import { ZodError, type ZodType } from 'zod';
+import { AI_TASK_DEFINITIONS, type AiTask, type AiTimeoutClass } from './tasks.js';
+export { AI_TASK_DEFINITIONS } from './tasks.js';
+export type { AiCapability, AiFallbackPolicy, AiTaskDefinition, AiTaskInput, AiTaskOutput, AiTimeoutClass, TaskDefinition } from './tasks.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
@@ -26,11 +22,9 @@ export interface TravelAiProvider {
   extractIntent(input: GenerateTripInput): Promise<TravelIntent>;
   planTrip(input: TripPlanningInput): Promise<TravelPlanDraft>;
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft>;
-  analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft>;
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult>;
+  analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft>;
 }
-
-export type AiTask = 'extract_intent' | 'generate_trip' | 'analyze_text' | 'rank_places';
 export type AiRunStatus = 'success' | 'error';
 export type InvalidOutputStage = 'missing_text' | 'json_parse' | 'schema_validation';
 export interface AiOutputDiagnostics {
@@ -157,29 +151,29 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
   }
 
   extractIntent(input: GenerateTripInput): Promise<TravelIntent> {
-    const parsed = GenerateTripRequestSchema.parse(input);
-    return this.request<TravelIntent>('extract_intent', buildExtractIntentPrompt(parsed), TravelIntentSchema, this.intentModel);
+    const parsed = AI_TASK_DEFINITIONS.extract_intent.inputSchema.parse(input);
+    return this.request('extract_intent', buildExtractIntentPrompt(parsed), AI_TASK_DEFINITIONS.extract_intent.outputSchema, this.intentModel);
   }
 
   generateTrip(input: GenerateTripInput): Promise<TravelPlanDraft> {
-    const parsed = GenerateTripRequestSchema.parse(input);
+    const parsed = AI_TASK_DEFINITIONS.extract_intent.inputSchema.parse(input);
     return this.planTrip({ prompt: parsed.prompt, intent: { preferences: [], avoidances: [], requestedCategories: [] }, candidates: [] });
   }
 
   planTrip(input: TripPlanningInput): Promise<TravelPlanDraft> {
-    const parsed = TripPlanningInputSchema.parse(input);
-    return this.request<TravelPlanDraft>('generate_trip', buildGenerateTripPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan');
+    const parsed = AI_TASK_DEFINITIONS.generate_trip.inputSchema.parse(input);
+    return this.request('generate_trip', buildGenerateTripPrompt(parsed), AI_TASK_DEFINITIONS.generate_trip.outputSchema, this.model, 'travel-plan');
   }
 
   analyzeText(input: AnalyzeTextInput): Promise<TravelPlanDraft> {
-    const parsed = AnalyzeTextRequestSchema.parse(input);
-    return this.request<TravelPlanDraft>('analyze_text', buildAnalyzeTravelContentPrompt(parsed), GenerateTripResponseSchema, this.model, 'travel-plan', normalizeAnalyzeTextOutput);
+    const parsed = AI_TASK_DEFINITIONS.analyze_text.inputSchema.parse(input);
+    return this.request('analyze_text', buildAnalyzeTravelContentPrompt(parsed), AI_TASK_DEFINITIONS.analyze_text.outputSchema, this.model, 'travel-plan', normalizeAnalyzeTextOutput);
   }
 
   async rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
-    const parsed = PlaceRankingInputSchema.parse(input);
+    const parsed = AI_TASK_DEFINITIONS.rank_places.inputSchema.parse(input);
     const allowed = new Set(parsed.candidates.map((candidate) => candidate.candidateId));
-    const rankingSchema = PlaceRankingResultSchema.superRefine((value, context) => {
+    const rankingSchema = AI_TASK_DEFINITIONS.rank_places.outputSchema.superRefine((value, context) => {
       const selected = new Set<string>();
       value.selections.forEach((selection, index) => {
         if (!allowed.has(selection.candidateId) || selected.has(selection.candidateId)) context.addIssue({ code: 'custom', path: ['selections', index, 'candidateId'], message: 'Candidate ID must be allowed and unique.' });
@@ -243,10 +237,11 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
     return Math.round(base * (0.8 + this.random() * 0.4));
   }
 
-  private isLongTask(task: AiTask): boolean { return task === 'generate_trip' || task === 'analyze_text'; }
-  private isClientTimeoutTerminal(task: AiTask): boolean { return task === 'extract_intent' || this.isLongTask(task); }
-  private timeoutFor(task: AiTask): number { return task === 'extract_intent' ? this.intentTimeoutMs : this.isLongTask(task) ? this.longTaskTimeoutMs : this.timeoutMs; }
-  private retryBudgetFor(task: AiTask): number { return task === 'extract_intent' ? Math.max(SHORT_TASK_RETRY_BUDGET_MS, this.intentTimeoutMs + INTENT_RETRY_BUDGET_HEADROOM_MS) : this.isLongTask(task) ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
+  private timeoutClass(task: AiTask): AiTimeoutClass { return AI_TASK_DEFINITIONS[task].timeoutClass; }
+  private isLongTask(task: AiTask): boolean { return this.timeoutClass(task) === 'long'; }
+  private isClientTimeoutTerminal(task: AiTask): boolean { return this.timeoutClass(task) !== 'short'; }
+  private timeoutFor(task: AiTask): number { const timeoutClass = this.timeoutClass(task); return timeoutClass === 'intent' ? this.intentTimeoutMs : timeoutClass === 'long' ? this.longTaskTimeoutMs : this.timeoutMs; }
+  private retryBudgetFor(task: AiTask): number { const timeoutClass = this.timeoutClass(task); return timeoutClass === 'intent' ? Math.max(SHORT_TASK_RETRY_BUDGET_MS, this.intentTimeoutMs + INTENT_RETRY_BUDGET_HEADROOM_MS) : timeoutClass === 'long' ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
 
   private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs, normalizeOutput?: (output: unknown) => unknown): Promise<T> {
     const controller = new AbortController();

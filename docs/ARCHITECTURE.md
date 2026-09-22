@@ -62,3 +62,7 @@ Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`�
 ## Production serving boundary
 
 Nginx가 HTTPS same-origin의 static web release와 `/api/*` reverse proxy를 담당합니다. Production Vite build는 root base(`/`)를 사용해 SPA nested route에서도 asset/API URL을 유지합니다. API는 systemd 아래 non-root로 `127.0.0.1:3000`에 bind하고 local PostgreSQL에 연결합니다. Repository `deploy/` template과 `scripts/`는 phase 5 적용을 준비하며 CI는 배포 없이 검증만 수행합니다.
+
+## AI task contract layer (P1-5A)
+
+`packages/ai/src/tasks.ts` defines the four logical AI task contracts consumed by the Gemini adapter. Each definition reuses the shared input/output Zod schema identity and declares capability, timeout class, and explicit-failure fallback policy. This is metadata and type safety only: the current runtime remains Gemini-only, with no provider registry, router, fallback execution, or self-hosted LLM.

@@ -33,3 +33,16 @@ Invalid structured output is classified as `missing_text`, `json_parse`, or `sch
 ## P1-4 regression quality gate
 
 The provider adapter owns bounded transport retry. Application use cases, domain checks, and the evaluation runner do not wrap provider calls in another retry loop. Long-task client timeouts are terminal because inference may already have consumed quota; retryable 429 and transient 5xx responses use the adapter budget and injected delay in tests. Structured-output failures (`missing_text`, `json_parse`, `schema_validation`) are non-retryable and remain distinct from transport errors. Recommendation retrieval fails closed when any category query has a provider transport failure. All regression fixtures use injected fetches and never record prompts, generated text, raw JSON, provider responses, credentials, or issue values.
+
+## P1-5A task contracts
+
+The Gemini adapter consumes the immutable `AI_TASK_DEFINITIONS` map in `packages/ai/src/tasks.ts`. It is metadata and type contract only; it does not select providers or execute fallback routing.
+
+| Task | Input | Output | Capability | Timeout class | Fallback |
+|---|---|---|---|---|---|
+| `extract_intent` | `GenerateTripRequestSchema` | `TravelIntentSchema` | `intent_extraction` | `intent` | `fail_explicitly` |
+| `generate_trip` | `TripPlanningInputSchema` | `GenerateTripResponseSchema` | `trip_planning` | `long` | `fail_explicitly` |
+| `analyze_text` | `AnalyzeTextRequestSchema` | `GenerateTripResponseSchema` | `travel_content_analysis` | `long` | `fail_explicitly` |
+| `rank_places` | `PlaceRankingInputSchema` | `PlaceRankingResultSchema` | `place_ranking` | `short` | `fail_explicitly` |
+
+`planTrip(TripPlanningInput)` is the provider operation for the logical `generate_trip` task. `generateTrip(GenerateTripInput)` remains the existing compatibility/convenience method and preserves the public API flow. Ranking candidate semantic refinement, analyze-text source-only normalization, structured-output validation, and observability task names remain unchanged. Gemini is currently the only execution provider; P1-5B router and P1-5C self-hosted provider are not implemented.

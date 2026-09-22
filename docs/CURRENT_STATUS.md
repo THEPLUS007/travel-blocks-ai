@@ -3,7 +3,7 @@
 Last verified: **2026-09-22**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
-Verified implementation baseline: `01e29ac845e9df97eba8577c78d1190a2b44efcc`
+Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
@@ -12,12 +12,13 @@ Verified implementation baseline: `01e29ac845e9df97eba8577c78d1190a2b44efcc`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-3 complete |
+| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5A complete; P1-5B next |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
-| P1-4 — Provider resilience & regression quality gate | NEXT | Not implemented |
-| P1-5 — AI Execution Platform | DESIGN DEFINED | P1-5A~F not implemented |
+| P1-4 — Provider resilience & regression quality gate | COMPLETE | `ed24990a`; CI Quality/E2E/PostgreSQL SUCCESS |
+| P1-5A — AI task contracts | COMPLETE | local task-contract and full verification tests PASS |
+| P1-5 — AI Execution Platform | IN PROGRESS | P1-5A complete; P1-5B next |
 | P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
 
 ## Current production architecture
@@ -98,7 +99,6 @@ The opening-hours foundation currently participates in deterministic domain/eval
 - actual route-distance/travel-time provider and runtime feasibility
 - opening-hours lookup on the production generation/runtime path
 - generalized provider health, partial-failure and data-quality policy layer
-- prompt/provider failure regression matrix for P1-4
 - LLM gateway/router and multi-provider routing
 - self-hosted LLM inference service
 - task-scoped AI context contract and source-level AI provenance
@@ -110,10 +110,14 @@ The opening-hours foundation currently participates in deterministic domain/eval
 
 ## Current work
 
-Next planned implementation: **P1-4 — Provider Resilience & Regression Quality Gate**.
+Next planned implementation: **P1-5B — LLM Gateway / Router Skeleton**.
 
-P1-5 must start only after P1-4 is complete and this file is updated with the new verified HEAD and evidence.
+P1-5B is the next implementation step; P1-5C~F remain unimplemented until their own gates pass.
 
 ## P1-4 verification addendum
 
 P1-4 provider resilience and regression gates are implemented in the local focused commit. Deterministic Places failure tests, Gemini structured-output/retry tests, prompt-boundary checks, recommendation partial-category fail-closed coverage, and P1-2/P1-3 regressions pass locally. CI completion is tracked on the pushed merge commit.
+
+## P1-5A verification
+
+P1-5A defines four immutable task contracts backed by the existing shared Zod schemas: `extract_intent`, `generate_trip`, `analyze_text`, and `rank_places`. Gemini remains the only provider; no router, provider registry, fallback execution, public schema, or DB migration was added. Task-contract, Gemini, API, evaluation, and PostgreSQL regressions remain covered by the existing verification gates.
