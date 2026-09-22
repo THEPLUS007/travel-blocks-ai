@@ -130,7 +130,7 @@ P1-4 makes failure and incomplete data behavior measurable before a second LLM p
 
 ### P1-5 — AI Execution Platform
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Full name: **LLM Provider Abstraction · Model Routing · Self-hosted LLM · Scope · Provenance**
 
@@ -181,7 +181,7 @@ Add the provider-neutral gateway and router boundary. Gemini remains the only en
 
 #### P1-5C — Self-hosted LLM PoC
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Introduce a separate internal inference-service contract and application adapter. Limit the first capability to `extractIntent` or a simpler classification subtask. The PoC must be testable without downloading a model or making live calls in CI.
 
