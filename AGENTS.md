@@ -1,5 +1,19 @@
 # Travel Blocks AI — Production Master Rules
 
+## 문서 권한과 필수 읽기 순서
+
+모든 작업자는 코드 수정 전에 다음 순서로 현재 기준을 확인한다.
+
+1. `AGENTS.md` — 작업 절차와 engineering rule
+2. `docs/INVARIANTS.md` — 절대로 깨면 안 되는 제품·데이터 규칙
+3. `docs/CURRENT_STATUS.md` — 실제 구현·검증·배포 상태
+4. `docs/ROADMAP.md` — phase 순서, 범위, 완료 조건
+5. 작업과 직접 관련된 architecture/provider/data/security/evaluation 문서
+
+문서 책임은 섞지 않는다. 변하지 않는 규칙은 `INVARIANTS.md`, 현재 사실은 `CURRENT_STATUS.md`, 미래 목표는 `ROADMAP.md`, 현재 구조의 세부 설명은 주제별 문서에 둔다.
+
+내용이 겹칠 때 `INVARIANTS.md`는 제품 경계, 이 파일은 그 경계를 지키기 위한 작업 방식으로 해석한다. 문서와 코드가 충돌하면 추측으로 문서를 맞추지 말고 코드·테스트·Git evidence를 확인한 뒤 함께 수정한다.
+
 ## 0. 프로젝트 목표
 
 이 프로젝트의 최종 목표는 단순한 해커톤 데모가 아니다.
@@ -608,6 +622,8 @@ README와 docs가 실제 구현과 다르면 코드 또는 문서를 수정한�
 구현하지 않은 기능을 README에 완료된 것처럼 쓰지 않는다.
 
 지원하지 않는 기능은 명확하게 표시한다.
+
+상태 변경은 검증 evidence와 함께 `docs/CURRENT_STATUS.md`에 기록하고, phase 범위나 순서를 바꾸면 `docs/ROADMAP.md`를 수정한다. 제품 불변 규칙 변경은 일반 문서 정리가 아니므로 `docs/INVARIANTS.md`와 기존 code/test contract를 함께 검토한다.
 
 ---
 

@@ -159,6 +159,9 @@ Nginx provides the public HTTPS boundary, while the Fastify API runs under syste
 
 | Document | Purpose |
 |---|---|
+| [Invariants](docs/INVARIANTS.md) | Product and data rules that must not be broken |
+| [Current Status](docs/CURRENT_STATUS.md) | Verified implementation, phase, deployment and test state |
+| [Roadmap](docs/ROADMAP.md) | P1 scope, sequence, completion gates and P1-5 prompts |
 | [Product Scope](docs/PRODUCT_SCOPE.md) | Supported product scope and exclusions |
 | [Architecture](docs/ARCHITECTURE.md) | Application boundaries and data flow |
 | [API](docs/API.md) | HTTP API contract |
