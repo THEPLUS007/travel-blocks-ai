@@ -12,7 +12,7 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5B complete; P1-5C next |
+| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5C complete; P1-5D next |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
@@ -20,7 +20,7 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | P1-5 — AI Execution Platform | IN PROGRESS | P1-5A~C complete; P1-5D next |
 | P1-5A — AI task contracts | COMPLETE | `ebdc1bc`; contract tests and full verification PASS |
 | P1-5B — LLM Gateway / Router Skeleton | COMPLETE | `16535c1`; Quality/E2E/PostgreSQL SUCCESS |
-| P1-5C — Self-hosted LLM PoC | COMPLETE | ; Quality/E2E/PostgreSQL SUCCESS |
+| P1-5C — Self-hosted LLM PoC | COMPLETE | 8313ce7; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5D — Explicit Routing Policy | NEXT | Not implemented |
 | P1-5E~P1-5F | PLANNED | Not implemented |
 | P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
