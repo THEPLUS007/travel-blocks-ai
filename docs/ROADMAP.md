@@ -175,7 +175,7 @@ Define task metadata and type-safe execution contracts for `extractIntent`, `gen
 
 #### P1-5B — LLM Gateway / Router Skeleton
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Add the provider-neutral gateway and router boundary. Gemini remains the only enabled provider, so routing is deterministic and behavior-preserving. Model/provider names stop leaking into application use cases.
 
