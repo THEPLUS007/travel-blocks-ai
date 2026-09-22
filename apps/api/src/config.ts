@@ -62,6 +62,11 @@ export interface ApiConfig {
   geminiLongTaskRetryBudgetMs: number;
   geminiMaxRetries: number;
   geminiMaxConcurrency: number;
+  selfHostedLlmEnabled: boolean;
+  selfHostedLlmEndpoint?: string;
+  selfHostedLlmModel?: string;
+  selfHostedLlmApiToken?: string;
+  selfHostedLlmTimeoutMs: number;
   dbMaxConnections: number;
   dbConnectionTimeoutMs: number;
   dbIdleTimeoutMs: number;
@@ -83,6 +88,10 @@ export function loadApiConfig(): ApiConfig {
     throw new Error('DATABASE_URL must be a valid PostgreSQL URL');
   }
 
+  const selfHostedLlmEnabled = boolean('SELF_HOSTED_LLM_ENABLED', false);
+  const selfHostedLlmEndpoint = process.env.SELF_HOSTED_LLM_ENDPOINT || undefined;
+  const selfHostedLlmModel = process.env.SELF_HOSTED_LLM_MODEL || undefined;
+  if (selfHostedLlmEnabled && (!selfHostedLlmEndpoint || !selfHostedLlmModel)) throw new Error('SELF_HOSTED_LLM_ENDPOINT and SELF_HOSTED_LLM_MODEL are required when SELF_HOSTED_LLM_ENABLED=true');
   return {
     nodeEnv: nodeEnv as ApiConfig['nodeEnv'],
     host: process.env.API_HOST || '0.0.0.0',
@@ -102,6 +111,11 @@ export function loadApiConfig(): ApiConfig {
     geminiLongTaskRetryBudgetMs: integer('GEMINI_LONG_TASK_RETRY_BUDGET_MS', 45_000, 40_000, 60_000),
     geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 2),
     geminiMaxConcurrency: integer('GEMINI_MAX_CONCURRENCY', 1, 1, 1),
+    selfHostedLlmEnabled,
+    selfHostedLlmEndpoint,
+    selfHostedLlmModel,
+    selfHostedLlmApiToken: process.env.SELF_HOSTED_LLM_API_TOKEN || undefined,
+    selfHostedLlmTimeoutMs: integer('SELF_HOSTED_LLM_TIMEOUT_MS', 15_000, 1000, 120_000),
     dbMaxConnections: integer('DB_MAX_CONNECTIONS', 10, 1, 50),
     dbConnectionTimeoutMs: integer('DB_CONNECTION_TIMEOUT_MS', 5000, 100, 60_000),
     dbIdleTimeoutMs: integer('DB_IDLE_TIMEOUT_MS', 30_000, 1000, 600_000),

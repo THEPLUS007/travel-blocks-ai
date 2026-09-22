@@ -55,7 +55,7 @@ P1-2와 P1-3 결과는 현재 deterministic domain/evaluation foundation입니�
 
 ## Trust and execution boundaries
 
-Application은 `TravelAiProvider` 호환 `AiTaskRouter`를 호출하고, Router는 static task table과 capability 검증을 거쳐 등록된 Gemini provider에 정확히 한 번 위임합니다. Gemini는 자연어 해석·ranking·planning, prompt/model/HTTP/structured output/retry/observability를 담당하고, Google Places 같은 data provider는 현실의 사실을 제공하며 domain code가 결과를 결정적으로 검증합니다. self-hosted inference service, dynamic routing, fallback execution은 아직 구현되지 않았습니다. 이 세 책임은 하나의 provider manager로 합치지 않습니다.
+Application은 `TravelAiProvider` 호환 `AiTaskRouter`를 호출하고, Router는 static task table과 capability 검증을 거쳐 등록된 Gemini provider에 정확히 한 번 위임합니다. Gemini는 자연어 해석·ranking·planning, prompt/model/HTTP/structured output/retry/observability를 담당하고, Google Places 같은 data provider는 현실의 사실을 제공하며 domain code가 결과를 결정적으로 검증합니다. self-hosted adapter foundation exists for extract-intent only; dynamic routing and fallback execution are not implemented. 이 세 책임은 하나의 provider manager로 합치지 않습니다.
 
 Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`과 quality flag가 포함됩니다. 더 넓은 provider resilience, AI scope/provenance, model routing은 현재 구조가 아니라 [Roadmap](ROADMAP.md)의 P1-4~P1-5 목표입니다. 경계 규칙은 [Invariants](INVARIANTS.md), 실제 구현 상태는 [Current Status](CURRENT_STATUS.md)를 따릅니다.
 

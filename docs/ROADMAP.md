@@ -181,6 +181,8 @@ Add the provider-neutral gateway and router boundary. Gemini remains the only en
 
 #### P1-5C — Self-hosted LLM PoC
 
+**Status: IN PROGRESS**
+
 Introduce a separate internal inference-service contract and application adapter. Limit the first capability to `extractIntent` or a simpler classification subtask. The PoC must be testable without downloading a model or making live calls in CI.
 
 #### P1-5D — Explicit Routing Policy

@@ -10,7 +10,7 @@ import type {
 import type { TravelAiProvider } from './index.js';
 import { AI_TASK_DEFINITIONS, type AiCapability, type AiTask } from './tasks.js';
 
-export type AiProviderId = 'gemini';
+export type AiProviderId = 'gemini' | 'self_hosted';
 
 export interface AiProviderRegistration {
   readonly id: AiProviderId;
@@ -25,6 +25,8 @@ export const GEMINI_CAPABILITIES = [
   'travel_content_analysis',
   'place_ranking',
 ] as const satisfies readonly AiCapability[];
+export const SELF_HOSTED_PROVIDER_ID: AiProviderId = 'self_hosted';
+export const SELF_HOSTED_CAPABILITIES = ['intent_extraction'] as const satisfies readonly AiCapability[];
 
 type AiTaskRoutingTable = { readonly [TTask in AiTask]: AiProviderId };
 export const AI_TASK_ROUTING = {
@@ -39,6 +41,14 @@ export function createGeminiAiRegistration(provider: TravelAiProvider): AiProvid
     id: GEMINI_PROVIDER_ID,
     provider,
     capabilities: new Set<AiCapability>(GEMINI_CAPABILITIES),
+  };
+}
+
+export function createSelfHostedAiRegistration(provider: TravelAiProvider): AiProviderRegistration {
+  return {
+    id: SELF_HOSTED_PROVIDER_ID,
+    provider,
+    capabilities: new Set<AiCapability>(SELF_HOSTED_CAPABILITIES),
   };
 }
 

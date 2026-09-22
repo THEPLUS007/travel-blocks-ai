@@ -11,8 +11,10 @@ import { ZodError, type ZodType } from 'zod';
 import { AI_TASK_DEFINITIONS, type AiTask, type AiTimeoutClass } from './tasks.js';
 export { AI_TASK_DEFINITIONS } from './tasks.js';
 export type { AiCapability, AiFallbackPolicy, AiTaskDefinition, AiTaskInput, AiTaskOutput, AiTimeoutClass, TaskDefinition } from './tasks.js';
-export { AI_TASK_ROUTING, AiTaskRouter, GEMINI_CAPABILITIES, GEMINI_PROVIDER_ID, createGeminiAiRegistration } from './router.js';
+export { AI_TASK_ROUTING, AiTaskRouter, GEMINI_CAPABILITIES, GEMINI_PROVIDER_ID, createGeminiAiRegistration, createSelfHostedAiRegistration } from './router.js';
 export type { AiProviderId, AiProviderRegistration } from './router.js';
+export { SELF_HOSTED_CAPABILITIES, SELF_HOSTED_PROVIDER_ID, SelfHostedHttpTransport, SelfHostedTravelAiProvider } from './selfHosted.js';
+export type { SelfHostedAiTransport, SelfHostedHttpTransportOptions, SelfHostedTransportRequest, SelfHostedTransportResponse, SelfHostedTravelAiProviderOptions } from './selfHosted.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
@@ -39,7 +41,7 @@ export interface AiOutputDiagnostics {
   schemaIssuePaths?: string[];
 }
 export interface AiRunEvent {
-  provider: 'gemini';
+  provider: 'gemini' | 'self_hosted';
   model: string;
   task: AiTask;
   status: AiRunStatus;

@@ -1,4 +1,4 @@
-import { AiProviderError, AiTaskRouter, GeminiTravelAiProvider, createGeminiAiRegistration, type TravelAiProvider } from '@travel-blocks/ai';
+import { AiProviderError, AiTaskRouter, GeminiTravelAiProvider, SelfHostedHttpTransport, SelfHostedTravelAiProvider, createGeminiAiRegistration, createSelfHostedAiRegistration, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TripPlanningInput, TravelPlanDraft } from '@travel-blocks/shared';
 import { PostgresAiRunRepository } from './aiRuns.js';
 import { AnonymousSessionAuth } from './auth.js';
@@ -64,7 +64,7 @@ try {
         maxConcurrency: config.geminiMaxConcurrency,
         observer: { record: async (event) => { console.info(`[Gemini] run ${JSON.stringify(event)}`); await aiRuns.record(event); } },
         onObserverError: (error) => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); },
-      }))])
+      })), ...(config.selfHostedLlmEnabled ? [createSelfHostedAiRegistration(new SelfHostedTravelAiProvider({ model: config.selfHostedLlmModel!, timeoutMs: config.selfHostedLlmTimeoutMs, transport: new SelfHostedHttpTransport({ baseUrl: config.selfHostedLlmEndpoint!, apiToken: config.selfHostedLlmApiToken }) }))] : [])])
     : new UnavailableAiProvider();
   app = await buildApp({
     repository,
