@@ -1,4 +1,4 @@
-import { AiProviderError, GeminiTravelAiProvider, type TravelAiProvider } from '@travel-blocks/ai';
+import { AiProviderError, AiTaskRouter, GeminiTravelAiProvider, createGeminiAiRegistration, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TripPlanningInput, TravelPlanDraft } from '@travel-blocks/shared';
 import { PostgresAiRunRepository } from './aiRuns.js';
 import { AnonymousSessionAuth } from './auth.js';
@@ -52,7 +52,7 @@ try {
     ? new GooglePlacesProvider({ apiKey: config.googlePlacesApiKey, timeoutMs: config.googlePlacesTimeoutMs })
     : new UnconfiguredPlaceProvider();
   const ai: TravelAiProvider = config.geminiApiKey
-    ? new GeminiTravelAiProvider({
+    ? new AiTaskRouter([createGeminiAiRegistration(new GeminiTravelAiProvider({
         apiKey: config.geminiApiKey,
         model: config.geminiModel,
         intentModel: config.geminiIntentModel,
@@ -64,7 +64,7 @@ try {
         maxConcurrency: config.geminiMaxConcurrency,
         observer: { record: async (event) => { console.info(`[Gemini] run ${JSON.stringify(event)}`); await aiRuns.record(event); } },
         onObserverError: (error) => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); },
-      })
+      }))])
     : new UnavailableAiProvider();
   app = await buildApp({
     repository,

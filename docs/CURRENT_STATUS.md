@@ -12,13 +12,13 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5A complete; P1-5B next |
+| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5A complete; P1-5B verification in progress |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
 | P1-4 — Provider resilience & regression quality gate | COMPLETE | `ed24990a`; CI Quality/E2E/PostgreSQL SUCCESS |
 | P1-5A — AI task contracts | COMPLETE | local task-contract and full verification tests PASS |
-| P1-5 — AI Execution Platform | IN PROGRESS | P1-5A complete; P1-5B next |
+| P1-5B — LLM Gateway / Router Skeleton | IN PROGRESS | Gemini-only implementation awaits GitHub Actions |
 | P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
 
 ## Current production architecture
@@ -34,7 +34,7 @@ Fastify API
 
 - AI provider: Gemini only
 - Place provider: Google Places API (New)
-- LLM router: not implemented
+- LLM router: static Gemini-only Router; dynamic routing/fallback not implemented
 - Self-hosted LLM: not implemented
 - Route provider: not implemented
 - Persistence: PostgreSQL, no production memory fallback
@@ -99,7 +99,7 @@ The opening-hours foundation currently participates in deterministic domain/eval
 - actual route-distance/travel-time provider and runtime feasibility
 - opening-hours lookup on the production generation/runtime path
 - generalized provider health, partial-failure and data-quality policy layer
-- LLM gateway/router and multi-provider routing
+- multi-provider dynamic routing and fallback execution
 - self-hosted LLM inference service
 - task-scoped AI context contract and source-level AI provenance
 - local-vs-Gemini benchmark and production routing quality gate
@@ -110,9 +110,9 @@ The opening-hours foundation currently participates in deterministic domain/eval
 
 ## Current work
 
-Next planned implementation: **P1-5B — LLM Gateway / Router Skeleton**.
+Current implementation: **P1-5B — LLM Gateway / Router Skeleton**; GitHub Actions verification is pending.
 
-P1-5B is the next implementation step; P1-5C~F remain unimplemented until their own gates pass.
+P1-5C is next; P1-5C~F remain unimplemented until their own gates pass.
 
 ## P1-4 verification addendum
 

@@ -11,6 +11,8 @@ import { ZodError, type ZodType } from 'zod';
 import { AI_TASK_DEFINITIONS, type AiTask, type AiTimeoutClass } from './tasks.js';
 export { AI_TASK_DEFINITIONS } from './tasks.js';
 export type { AiCapability, AiFallbackPolicy, AiTaskDefinition, AiTaskInput, AiTaskOutput, AiTimeoutClass, TaskDefinition } from './tasks.js';
+export { AI_TASK_ROUTING, AiTaskRouter, GEMINI_CAPABILITIES, GEMINI_PROVIDER_ID, createGeminiAiRegistration } from './router.js';
+export type { AiProviderId, AiProviderRegistration } from './router.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
