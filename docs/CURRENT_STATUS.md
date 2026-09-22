@@ -12,16 +12,16 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5C complete; P1-5D next |
+| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5C complete; P1-5D implementation verification in progress |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
 | P1-4 — Provider resilience & regression quality gate | COMPLETE | `ed24990a`; CI Quality/E2E/PostgreSQL SUCCESS |
-| P1-5 — AI Execution Platform | IN PROGRESS | P1-5A~C complete; P1-5D next |
+| P1-5 — AI Execution Platform | IN PROGRESS | P1-5A~C complete; P1-5D implementation verification in progress |
 | P1-5A — AI task contracts | COMPLETE | `ebdc1bc`; contract tests and full verification PASS |
 | P1-5B — LLM Gateway / Router Skeleton | COMPLETE | `16535c1`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5C — Self-hosted LLM PoC | COMPLETE | 8313ce7; Quality/E2E/PostgreSQL SUCCESS |
-| P1-5D — Explicit Routing Policy | NEXT | Not implemented |
+| P1-5D — Explicit Routing Policy | IN PROGRESS | Deterministic policy, readiness boundary, and regression tests implemented; full verification pending |
 | P1-5E~P1-5F | PLANNED | Not implemented |
 | P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
 
@@ -36,10 +36,10 @@ Fastify API
     └─ Google Places API (New)
 ```
 
-- AI provider: Gemini only
+- AI provider: Gemini by default; self-hosted is an explicit, guarded `extract_intent` opt-in only
 - Place provider: Google Places API (New)
-- LLM router: static Gemini-only Router; dynamic routing/fallback not implemented
-- Self-hosted LLM: not implemented
+- LLM router: explicit policy; default Gemini-only, no execution fallback
+- Self-hosted LLM: adapter exists for `extract_intent`; inference service is not deployed
 - Route provider: not implemented
 - Persistence: PostgreSQL, no production memory fallback
 - Delivery baseline: Nginx + systemd + GitHub Actions
@@ -114,9 +114,7 @@ The opening-hours foundation currently participates in deterministic domain/eval
 
 ## Current work
 
-Next planned implementation: **P1-5D — Explicit Routing Policy**.
-
-P1-5C is complete; P1-5D is next and P1-5E~F remain unimplemented.
+P1-5D routing-policy implementation is under verification. P1-5E~F remain unimplemented.
 
 ## P1-4 verification addendum
 
@@ -127,3 +125,7 @@ P1-4 provider resilience and regression gates are implemented in the local focus
 P1-5A defines four immutable task contracts backed by the existing shared Zod schemas: `extract_intent`, `generate_trip`, `analyze_text`, and `rank_places`. Gemini remains the only provider; no router, provider registry, fallback execution, public schema, or DB migration was added. Task-contract, Gemini, API, evaluation, and PostgreSQL regressions remain covered by the existing verification gates.
 
 ## P1-5B verification
+
+## P1-5D implementation (verification in progress)
+
+`AiRoutingPolicy` performs one deterministic pre-execution decision from task capability, provider registration, explicit `AI_ROUTING_MODE`, self-hosted enablement, and injected readiness. Defaults are `gemini_only` and `unknown`, so all four tasks keep Gemini behavior without new environment variables. In `hybrid`, only `extract_intent` can select the registered self-hosted provider, and only when it is enabled, has `intent_extraction`, and readiness is `healthy`; the other three tasks always select Gemini. There is no retry, concurrent execution, or post-execution fallback in the Router. Routing decision metadata is safe-only (task, capability, selected provider, mode, reason, readiness, timestamp); lifecycle success/failure remains adapter-owned. No inference service, public API change, DB migration, deployment, or live provider call was added.

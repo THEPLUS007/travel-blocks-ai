@@ -42,6 +42,18 @@ function boolean(name: string, fallback: boolean): boolean {
   if (raw === 'false') return false;
   throw new Error(`${name} must be true or false`);
 }
+function routingMode(): 'gemini_only' | 'hybrid' {
+  const value = process.env.AI_ROUTING_MODE || 'gemini_only';
+  if (value === 'gemini_only' || value === 'hybrid') return value;
+  throw new Error('AI_ROUTING_MODE must be gemini_only or hybrid');
+}
+
+function selfHostedReadiness(): 'healthy' | 'unhealthy' | 'unknown' {
+  const value = process.env.SELF_HOSTED_LLM_READINESS || 'unknown';
+  if (value === 'healthy' || value === 'unhealthy' || value === 'unknown') return value;
+  throw new Error('SELF_HOSTED_LLM_READINESS must be healthy, unhealthy, or unknown');
+}
+
 
 export interface ApiConfig {
   nodeEnv: 'development' | 'test' | 'production';
@@ -63,10 +75,12 @@ export interface ApiConfig {
   geminiMaxRetries: number;
   geminiMaxConcurrency: number;
   selfHostedLlmEnabled: boolean;
+  aiRoutingMode: 'gemini_only' | 'hybrid';
   selfHostedLlmEndpoint?: string;
   selfHostedLlmModel?: string;
   selfHostedLlmApiToken?: string;
   selfHostedLlmTimeoutMs: number;
+  selfHostedLlmReadiness: 'healthy' | 'unhealthy' | 'unknown';
   dbMaxConnections: number;
   dbConnectionTimeoutMs: number;
   dbIdleTimeoutMs: number;
@@ -92,6 +106,8 @@ export function loadApiConfig(): ApiConfig {
   const selfHostedLlmEndpoint = process.env.SELF_HOSTED_LLM_ENDPOINT || undefined;
   const selfHostedLlmModel = process.env.SELF_HOSTED_LLM_MODEL || undefined;
   if (selfHostedLlmEnabled && (!selfHostedLlmEndpoint || !selfHostedLlmModel)) throw new Error('SELF_HOSTED_LLM_ENDPOINT and SELF_HOSTED_LLM_MODEL are required when SELF_HOSTED_LLM_ENABLED=true');
+  const aiRoutingMode = routingMode();
+  const selfHostedLlmReadiness = selfHostedReadiness();
   return {
     nodeEnv: nodeEnv as ApiConfig['nodeEnv'],
     host: process.env.API_HOST || '0.0.0.0',
@@ -112,10 +128,12 @@ export function loadApiConfig(): ApiConfig {
     geminiMaxRetries: integer('GEMINI_MAX_RETRIES', 2, 0, 2),
     geminiMaxConcurrency: integer('GEMINI_MAX_CONCURRENCY', 1, 1, 1),
     selfHostedLlmEnabled,
+    aiRoutingMode,
     selfHostedLlmEndpoint,
     selfHostedLlmModel,
     selfHostedLlmApiToken: process.env.SELF_HOSTED_LLM_API_TOKEN || undefined,
     selfHostedLlmTimeoutMs: integer('SELF_HOSTED_LLM_TIMEOUT_MS', 15_000, 1000, 120_000),
+    selfHostedLlmReadiness,
     dbMaxConnections: integer('DB_MAX_CONNECTIONS', 10, 1, 50),
     dbConnectionTimeoutMs: integer('DB_CONNECTION_TIMEOUT_MS', 5000, 100, 60_000),
     dbIdleTimeoutMs: integer('DB_IDLE_TIMEOUT_MS', 30_000, 1000, 600_000),

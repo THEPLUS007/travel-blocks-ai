@@ -134,6 +134,8 @@ P1-4 makes failure and incomplete data behavior measurable before a second LLM p
 
 Full name: **LLM Provider Abstraction · Model Routing · Self-hosted LLM · Scope · Provenance**
 
+**Status: IN PROGRESS**
+
 P1-5 is not a rewrite of `TravelAiProvider`. It evolves the existing boundary so task execution can be routed while domain contracts and factual provider ownership remain unchanged.
 
 #### Target structure
@@ -187,7 +189,9 @@ Introduce a separate internal inference-service contract and application adapter
 
 #### P1-5D — Explicit Routing Policy
 
-Route by task capability, provider health, latency/cost class and quality eligibility. Fallback is an explicit task policy, not a catch-all. `generateTrip` remains Gemini-only until another provider passes its quality gate.
+**Status: IN PROGRESS**
+
+Implement a typed, deterministic pre-execution policy. The safe default is Gemini-only. `hybrid` may select self-hosted only for `extract_intent` when the provider is explicitly enabled and registered, declares `intent_extraction`, and injected readiness is `healthy`; all other tasks remain Gemini-only. This decision is not execution fallback: the selected provider is called once, and any provider error is propagated unchanged. No cost/latency routing, quality gate, circuit breaker, or post-execution fallback is part of P1-5D.
 
 #### P1-5E — Scope + AI Provenance
 

@@ -55,7 +55,7 @@ P1-2와 P1-3 결과는 현재 deterministic domain/evaluation foundation입니�
 
 ## Trust and execution boundaries
 
-Application은 `TravelAiProvider` 호환 `AiTaskRouter`를 호출하고, Router는 static task table과 capability 검증을 거쳐 등록된 Gemini provider에 정확히 한 번 위임합니다. Gemini는 자연어 해석·ranking·planning, prompt/model/HTTP/structured output/retry/observability를 담당하고, Google Places 같은 data provider는 현실의 사실을 제공하며 domain code가 결과를 결정적으로 검증합니다. self-hosted adapter foundation exists for extract-intent only; dynamic routing and fallback execution are not implemented. 이 세 책임은 하나의 provider manager로 합치지 않습니다.
+Application은 `TravelAiProvider` 호환 `AiTaskRouter`를 호출하고, Router는 `AiRoutingPolicy`의 단일 pre-execution decision과 capability 검증을 거쳐 선택된 provider에 정확히 한 번 위임합니다. 기본 policy는 Gemini-only이며, explicit `hybrid` opt-in에서는 enabled·registered·`intent_extraction` capability·`healthy` readiness를 모두 만족한 self-hosted provider만 `extract_intent`에 선택될 수 있습니다. `generate_trip`, `analyze_text`, `rank_places`는 계속 Gemini-only입니다. Gemini와 self-hosted adapter는 prompt/model/HTTP/structured output/retry/observability를 각각 소유하고, Router는 prompt, parsing, retry, timeout, fallback, grounding, feasibility를 소유하지 않습니다. Post-execution fallback과 dynamic quality/cost/latency routing은 구현되지 않았습니다.
 
 Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`과 quality flag가 포함됩니다. 더 넓은 provider resilience, AI scope/provenance, model routing은 현재 구조가 아니라 [Roadmap](ROADMAP.md)의 P1-4~P1-5 목표입니다. 경계 규칙은 [Invariants](INVARIANTS.md), 실제 구현 상태는 [Current Status](CURRENT_STATUS.md)를 따릅니다.
 
@@ -65,4 +65,4 @@ Nginx가 HTTPS same-origin의 static web release와 `/api/*` reverse proxy를 �
 
 ## AI task contract layer (P1-5A)
 
-`packages/ai/src/tasks.ts` defines the four logical AI task contracts consumed by the Gemini adapter. Each definition reuses the shared input/output Zod schema identity and declares capability, timeout class, and explicit-failure fallback policy. P1-5B adds `packages/ai/src/router.ts`: Gemini-only registration, an exhaustive static task table, startup capability validation, and a `TravelAiProvider`-compatible Router. It does not add self-hosted LLM, dynamic routing, fallback execution, or new observability events.
+`packages/ai/src/tasks.ts` defines the four logical AI task contracts consumed by adapters. Each definition reuses the shared input/output Zod schema identity and declares capability, timeout class, and explicit-failure fallback policy. `packages/ai/src/router.ts` keeps an exhaustive Gemini static baseline table and startup capability validation; `packages/ai/src/routingPolicy.ts` adds typed policy decisions and an injectable `healthy`/`unhealthy`/`unknown` readiness source. Routing-decision observation is safe metadata only and observer failure cannot alter task execution.

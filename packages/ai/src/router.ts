@@ -8,6 +8,7 @@ import type {
   TravelPlanDraft,
 } from '@travel-blocks/shared';
 import type { TravelAiProvider } from './index.js';
+import { AiRoutingPolicy, type AiRoutingDecision } from './routingPolicy.js';
 import { AI_TASK_DEFINITIONS, type AiCapability, type AiTask } from './tasks.js';
 
 export type AiProviderId = 'gemini' | 'self_hosted';
@@ -52,10 +53,21 @@ export function createSelfHostedAiRegistration(provider: TravelAiProvider): AiPr
   };
 }
 
+export interface AiRoutingObserver {
+  record(decision: AiRoutingDecision): void | Promise<void>;
+}
+
+export interface AiTaskRouterOptions {
+  readonly policy?: AiRoutingPolicy;
+  readonly observer?: AiRoutingObserver;
+  readonly onObserverError?: (error: unknown) => void;
+}
+
 export class AiTaskRouter implements TravelAiProvider {
   private readonly providers: ReadonlyMap<AiProviderId, AiProviderRegistration>;
+  private readonly policy: AiRoutingPolicy;
 
-  constructor(registrations: readonly AiProviderRegistration[]) {
+  constructor(registrations: readonly AiProviderRegistration[], private readonly options: AiTaskRouterOptions = {}) {
     const providers = new Map<AiProviderId, AiProviderRegistration>();
     for (const registration of registrations) {
       if (providers.has(registration.id)) throw new Error(`Duplicate AI provider registration: ${registration.id}`);
@@ -71,12 +83,22 @@ export class AiTaskRouter implements TravelAiProvider {
       }
     }
     this.providers = providers;
+    this.policy = options.policy ?? new AiRoutingPolicy({ registrations });
   }
 
   private providerFor(task: AiTask): TravelAiProvider {
-    const registration = this.providers.get(AI_TASK_ROUTING[task]);
+    const decision = this.policy.decide(task);
+    void this.observe(decision);
+    const registration = this.providers.get(decision.selectedProviderId);
     if (!registration) throw new Error(`No AI provider registered for task ${task}`);
+    if (!registration.capabilities.has(decision.requiredCapability)) {
+      throw new Error(`AI provider ${decision.selectedProviderId} does not support capability ${decision.requiredCapability} for task ${task}`);
+    }
     return registration.provider;
+  }
+
+  private async observe(decision: AiRoutingDecision): Promise<void> {
+    try { await this.options.observer?.record(decision); } catch (error) { this.options.onObserverError?.(error); }
   }
 
   extractIntent(input: GenerateTripInput): Promise<TravelIntent> {

@@ -1,4 +1,4 @@
-import { AiProviderError, AiTaskRouter, GeminiTravelAiProvider, SelfHostedHttpTransport, SelfHostedTravelAiProvider, createGeminiAiRegistration, createSelfHostedAiRegistration, type TravelAiProvider } from '@travel-blocks/ai';
+import { AiProviderError, AiRoutingPolicy, AiTaskRouter, GeminiTravelAiProvider, SelfHostedHttpTransport, SelfHostedTravelAiProvider, StaticAiProviderHealthSource, createGeminiAiRegistration, createSelfHostedAiRegistration, type TravelAiProvider } from '@travel-blocks/ai';
 import type { AnalyzeTextInput, GenerateTripInput, PlaceRankingInput, PlaceRankingResult, TravelIntent, TripPlanningInput, TravelPlanDraft } from '@travel-blocks/shared';
 import { PostgresAiRunRepository } from './aiRuns.js';
 import { AnonymousSessionAuth } from './auth.js';
@@ -51,20 +51,44 @@ try {
   const places = config.googlePlacesApiKey
     ? new GooglePlacesProvider({ apiKey: config.googlePlacesApiKey, timeoutMs: config.googlePlacesTimeoutMs })
     : new UnconfiguredPlaceProvider();
+  const onAiObserverError = (error: unknown): void => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); };
+  const aiRunObserver = { record: async (event: Parameters<PostgresAiRunRepository['record']>[0]) => { console.info(`[AI] run ${JSON.stringify(event)}`); await aiRuns.record(event); } };
   const ai: TravelAiProvider = config.geminiApiKey
-    ? new AiTaskRouter([createGeminiAiRegistration(new GeminiTravelAiProvider({
-        apiKey: config.geminiApiKey,
-        model: config.geminiModel,
-        intentModel: config.geminiIntentModel,
-        timeoutMs: config.geminiTimeoutMs,
-        intentTimeoutMs: config.geminiIntentTimeoutMs,
-        longTaskTimeoutMs: config.geminiLongTaskTimeoutMs,
-        longTaskRetryBudgetMs: config.geminiLongTaskRetryBudgetMs,
-        maxRetries: config.geminiMaxRetries,
-        maxConcurrency: config.geminiMaxConcurrency,
-        observer: { record: async (event) => { console.info(`[Gemini] run ${JSON.stringify(event)}`); await aiRuns.record(event); } },
-        onObserverError: (error) => { const code = typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : 'unknown'; console.error('[AI Observability] insert failed code=' + code); },
-      })), ...(config.selfHostedLlmEnabled ? [createSelfHostedAiRegistration(new SelfHostedTravelAiProvider({ model: config.selfHostedLlmModel!, timeoutMs: config.selfHostedLlmTimeoutMs, transport: new SelfHostedHttpTransport({ baseUrl: config.selfHostedLlmEndpoint!, apiToken: config.selfHostedLlmApiToken }) }))] : [])])
+    ? (() => {
+        const registrations = [createGeminiAiRegistration(new GeminiTravelAiProvider({
+          apiKey: config.geminiApiKey,
+          model: config.geminiModel,
+          intentModel: config.geminiIntentModel,
+          timeoutMs: config.geminiTimeoutMs,
+          intentTimeoutMs: config.geminiIntentTimeoutMs,
+          longTaskTimeoutMs: config.geminiLongTaskTimeoutMs,
+          longTaskRetryBudgetMs: config.geminiLongTaskRetryBudgetMs,
+          maxRetries: config.geminiMaxRetries,
+          maxConcurrency: config.geminiMaxConcurrency,
+          observer: aiRunObserver,
+          onObserverError: onAiObserverError,
+        }))];
+        if (config.selfHostedLlmEnabled) {
+          registrations.push(createSelfHostedAiRegistration(new SelfHostedTravelAiProvider({
+            model: config.selfHostedLlmModel!,
+            timeoutMs: config.selfHostedLlmTimeoutMs,
+            transport: new SelfHostedHttpTransport({ baseUrl: config.selfHostedLlmEndpoint!, apiToken: config.selfHostedLlmApiToken }),
+            observer: aiRunObserver,
+            onObserverError: onAiObserverError,
+          })));
+        }
+        const policy = new AiRoutingPolicy({
+          mode: config.aiRoutingMode,
+          registrations,
+          selfHostedEnabled: config.selfHostedLlmEnabled,
+          health: new StaticAiProviderHealthSource({ self_hosted: config.selfHostedLlmReadiness }),
+        });
+        return new AiTaskRouter(registrations, {
+          policy,
+          observer: { record: (decision) => console.info(`[AI Routing] ${JSON.stringify(decision)}`) },
+          onObserverError: onAiObserverError,
+        });
+      })()
     : new UnavailableAiProvider();
   app = await buildApp({
     repository,
