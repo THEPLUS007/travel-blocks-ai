@@ -2,6 +2,12 @@
 
 Use this index for detailed design and operator references. The repository [README](../README.md) is the quick project overview.
 
+## Project control
+
+- [Invariants](INVARIANTS.md) — product and data rules that must not be broken.
+- [Current Status](CURRENT_STATUS.md) — verified implementation, phase, deployment and test state.
+- [Roadmap](ROADMAP.md) — future phase scope, order, completion gates and P1-5 execution prompts.
+
 ## Product
 
 - [Product Scope](PRODUCT_SCOPE.md) — supported capabilities and explicit exclusions.

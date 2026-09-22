@@ -49,7 +49,7 @@ Every result records coverage: possible, evaluated, and skipped consecutive segm
 
 ## Current limits
 
-This baseline does not judge subjective itinerary quality, live model differences, actual routed duration or distance, opening hours, costs, or provider availability. Actual routing requires a future routing provider; it remains outside this network-independent baseline.
+This baseline does not judge subjective itinerary quality, live model differences, actual routed duration or distance, costs, or live provider availability. Opening-hours feasibility is evaluated only from deterministic snapshots and fixtures described below; it does not prove live provider coverage. Actual routing requires a future routing provider and remains outside this network-independent baseline.
 
 ## Opening Hours Feasibility (P1-3)
 

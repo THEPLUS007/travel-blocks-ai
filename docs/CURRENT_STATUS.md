@@ -1,0 +1,115 @@
+# Travel Blocks AI Current Status
+
+Last verified: **2026-09-22**  
+Repository: `THEPLUS007/travel-blocks-ai`  
+Branch: `main`  
+Verified implementation baseline: `01e29ac845e9df97eba8577c78d1190a2b44efcc`
+
+이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
+
+## Phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
+| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-3 complete |
+| P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
+| P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
+| P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
+| P1-4 — Provider resilience & regression quality gate | NEXT | Not implemented |
+| P1-5 — AI Execution Platform | DESIGN DEFINED | P1-5A~F not implemented |
+| P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
+
+## Current production architecture
+
+```text
+React/Vite web
+    ↓ same-origin /api
+Fastify API
+    ├─ PostgreSQL
+    ├─ Gemini
+    └─ Google Places API (New)
+```
+
+- AI provider: Gemini only
+- Place provider: Google Places API (New)
+- LLM router: not implemented
+- Self-hosted LLM: not implemented
+- Route provider: not implemented
+- Persistence: PostgreSQL, no production memory fallback
+- Delivery baseline: Nginx + systemd + GitHub Actions
+
+The P0 production baseline was deployed previously. The P1-3 commit itself was **not deployed or restarted** as part of its completion work, and P1-3 did not change the current runtime request behavior.
+
+## Implemented
+
+### Application and data
+
+- React/Vite Travel Block editor
+- Fastify API with Zod request/response contracts
+- PostgreSQL persistence, optimistic concurrency, anonymous-session isolation
+- provider-verified place grounding and server-side canonicalization
+- safe public text/HTML source extraction with SSRF controls
+- deterministic itinerary structure and candidate-integrity validation
+
+### AI
+
+- `TravelAiProvider` boundary
+- task methods: `extractIntent`, `generateTrip`, `analyzeText`, `rankPlaces`
+- Gemini task-specific prompts and structured output
+- application-side Zod and semantic validation
+- bounded timeout/retry/concurrency/dedupe behavior
+- safe AI run metadata through `ai_generation_runs`
+
+### P1 evaluation and feasibility
+
+- 8 deterministic evaluation scenarios with no network/provider/DB calls
+- P1-2 Haversine straight-line geographic heuristic with explicit coverage
+- P1-3 provider-neutral opening-hours model
+- business status, timezone, current/regular schedules, provenance, quality flags
+- overnight and 24-hour period support
+- explicit `tripStartDate` and strict `HH:MM` / `HH:MM-HH:MM` parsing
+- results: `feasible`, `caution`, `infeasible`, `unknown`
+- provider facts separated from deterministic feasibility decisions
+- lazy `PlaceOpeningHoursProvider` capability using Google Place Details fields
+
+The opening-hours foundation currently participates in deterministic domain/evaluation fixtures. It does not yet change public API schemas, persisted Trip/TravelBlock data, or the production trip-generation path.
+
+## P1-3 verification snapshot
+
+| Check | Result |
+|---|---|
+| Opening-hours domain tests | 3 PASS |
+| Google parser/provider mock tests | 2 PASS |
+| Route regression tests | 8 PASS |
+| Evaluator tests | 10 PASS |
+| Evaluation baseline | 8/8 scenarios PASS |
+| Deterministic checks | 98/98 PASS |
+| `npm run verify` | PASS |
+| `npm run eval` | PASS |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| GitHub Actions Quality | SUCCESS |
+| GitHub Actions E2E | SUCCESS |
+| GitHub Actions PostgreSQL | SUCCESS |
+| Live Gemini / Places / Routes calls | 0 / 0 / 0 |
+
+## Not implemented
+
+- actual route-distance/travel-time provider and runtime feasibility
+- opening-hours lookup on the production generation/runtime path
+- generalized provider health, partial-failure and data-quality policy layer
+- prompt/provider failure regression matrix for P1-4
+- LLM gateway/router and multi-provider routing
+- self-hosted LLM inference service
+- task-scoped AI context contract and source-level AI provenance
+- local-vs-Gemini benchmark and production routing quality gate
+- durable background queue/worker runtime
+- trust/provenance/quality-warning UI
+- YouTube transcript extraction
+- full login UI, booking, payment, price comparison, collaboration
+
+## Current work
+
+Next planned implementation: **P1-4 — Provider Resilience & Regression Quality Gate**.
+
+P1-5 must start only after P1-4 is complete and this file is updated with the new verified HEAD and evidence.

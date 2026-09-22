@@ -47,7 +47,17 @@ Source type은 client hint가 아니라 server의 WHATWG URL parser가 최종 �
 
 AI `generateTrip`과 `analyzeText` 결과는 API 응답 전에 `packages/domain`의 pure validator를 통과해야 합니다. Validator는 Day/Block/Connection ID와 참조 무결성, 순차 Day 번호, verified-place identity/candidate membership, 일정 밀도 상한을 검사하고 안정적인 machine-readable issue code를 생성합니다. 유효하지 않은 AI 결과는 provider 원문이나 내부 issue를 노출하지 않는 `ITINERARY_INVALID` API 오류로 변환됩니다.
 
-P1-2는 verified place 좌표를 이용한 deterministic straight-line geographic feasibility 경고를 domain/evaluation에만 제공합니다. 이는 실제 경로·이동 시간·교통·비용을 계산하지 않으며 runtime 응답, TravelBlock schema, DB에는 저장하지 않습니다. 실제 route-time feasibility와 opening-hours feasibility는 provider-backed 데이터가 필요하므로 여전히 **DEFERRED**입니다. 구현되지 않은 검증을 완료된 것으로 간주하지 않습니다.
+P1-2는 verified place 좌표를 이용한 deterministic straight-line geographic feasibility 경고를 domain/evaluation에 제공합니다. 이는 실제 경로·이동 시간·교통·비용을 계산하지 않으며 runtime 응답, TravelBlock schema, DB에는 저장하지 않습니다.
+
+P1-3는 provider fact와 feasibility decision을 분리한 opening-hours foundation을 추가했습니다. `PlaceOpeningHoursProvider`가 Google Place Details의 business status, timezone, current/regular periods를 lazy lookup하고 provider-neutral snapshot, provenance, quality flag로 정규화합니다. 순수 domain rule은 명시적 trip date와 `HH:MM` 또는 `HH:MM-HH:MM` block time을 사용해 `feasible`, `caution`, `infeasible`, `unknown`을 판정하며 overnight/24-hour period를 처리합니다.
+
+P1-2와 P1-3 결과는 현재 deterministic domain/evaluation foundation입니다. 실제 route-time provider와 production trip-generation path의 opening-hours lookup은 구현되지 않았고, public TravelBlock/Trip schema와 DB에는 저장되지 않습니다.
+
+## Trust and execution boundaries
+
+현재 LLM 실행은 Gemini 단일 provider이며 multi-provider LLM router와 self-hosted inference service는 아직 구현되지 않았습니다. Google Places 같은 data provider는 현실의 사실을 제공하고, Gemini는 자연어 해석·ranking·planning을 담당하며, domain code가 결과를 결정적으로 검증합니다. 이 세 책임은 하나의 provider manager로 합치지 않습니다.
+
+Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`과 quality flag가 포함됩니다. 더 넓은 provider resilience, AI scope/provenance, model routing은 현재 구조가 아니라 [Roadmap](ROADMAP.md)의 P1-4~P1-5 목표입니다. 경계 규칙은 [Invariants](INVARIANTS.md), 실제 구현 상태는 [Current Status](CURRENT_STATUS.md)를 따릅니다.
 
 ## Production serving boundary
 
