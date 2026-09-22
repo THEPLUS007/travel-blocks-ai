@@ -189,7 +189,7 @@ Introduce a separate internal inference-service contract and application adapter
 
 #### P1-5D — Explicit Routing Policy
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Implement a typed, deterministic pre-execution policy. The safe default is Gemini-only. `hybrid` may select self-hosted only for `extract_intent` when the provider is explicitly enabled and registered, declares `intent_extraction`, and injected readiness is `healthy`; all other tasks remain Gemini-only. This decision is not execution fallback: the selected provider is called once, and any provider error is propagated unchanged. No cost/latency routing, quality gate, circuit breaker, or post-execution fallback is part of P1-5D.
 
