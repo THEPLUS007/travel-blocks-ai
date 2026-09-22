@@ -88,3 +88,11 @@ describe('GooglePlacesProvider', () => {
   });
   it('미설정 provider는 Mock 없이 unavailable 오류를 반환한다', async () => expect(new UnconfiguredPlaceProvider().search({ query: '서울' })).rejects.toMatchObject({ code: 'unavailable' }));
 });
+  it('network rejection is classified separately from timeout', async () => {
+    await expect(new GooglePlacesProvider({ apiKey: 'key', fetch: async () => { throw new Error('socket failed'); } }).search({ query: '서울' })).rejects.toMatchObject({ code: 'network', retryable: true });
+  });
+  it('opening-hours missing fields remain valid factual data', async () => {
+    const result = await new GooglePlacesProvider({ apiKey: 'key', fetch: async () => response({ id: 'place-1', businessStatus: 'OPERATIONAL' }) }).getOpeningHours('place-1');
+    expect(result).toMatchObject({ provider: 'google', providerPlaceId: 'place-1', businessStatus: 'operational', source: 'google_places' });
+    expect(result?.dataQualityFlags).toContain('opening_hours_missing');
+  });

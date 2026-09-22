@@ -27,3 +27,7 @@ Production serializes Gemini work with `GEMINI_MAX_CONCURRENCY=1`. `extract_inte
 Lifecycle events include provider attempt count and whether a `Retry-After` delay was used. The server journals only safe event metadata before sending the existing persistent fields to observability storage; this requires no database migration.
 
 Invalid structured output is classified as `missing_text`, `json_parse`, or `schema_validation`. Safe metadata may include candidate count, finish reason, text presence, and capped Zod issue codes/paths. Generated text, raw JSON responses, issue values, prompts, API keys, and credentials are never included.
+
+## P1-4 regression quality gate
+
+The provider adapter owns bounded transport retry. Application use cases, domain checks, and the evaluation runner do not wrap provider calls in another retry loop. Long-task client timeouts are terminal because inference may already have consumed quota; retryable 429 and transient 5xx responses use the adapter budget and injected delay in tests. Structured-output failures (`missing_text`, `json_parse`, `schema_validation`) are non-retryable and remain distinct from transport errors. Recommendation retrieval fails closed when any category query has a provider transport failure. All regression fixtures use injected fetches and never record prompts, generated text, raw JSON, provider responses, credentials, or issue values.

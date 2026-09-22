@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { PlaceSearchProvider } from '../src/places.js';
 import type { RecommendationInput, VerifiedPlace } from '@travel-blocks/shared';
 import { fixturePlan, TestPlaceProvider } from '@travel-blocks/test-fixtures';
 import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from '../src/recommendations.js';
@@ -23,5 +24,10 @@ describe('retrieval-first recommendations', () => {
     const blocks = selectedPlacesToBlocks([candidate], { selections: [{ candidateId: 'google:g1', reason: '일정과 잘 맞음' }, { candidateId: 'invented', reason: '가짜' }] });
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toMatchObject({ title: '실제 장소', category: 'food', location: '실제 주소', memo: '일정과 잘 맞음', place: { provider: 'google', providerPlaceId: 'g1', verified: true } });
+  });
+  it('fails the whole category retrieval when one provider category fails', async () => {
+    const provider = new TestPlaceProvider();
+    const failing = { ...provider, search: async (query: { category?: string }) => { if (query.category === 'food') throw new Error('provider unavailable'); return provider.search(query as never); } } as unknown as PlaceSearchProvider;
+    await expect(retrievePlaceCandidates(failing, input)).rejects.toThrow('provider unavailable');
   });
 });
