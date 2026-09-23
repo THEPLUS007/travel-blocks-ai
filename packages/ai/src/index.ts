@@ -19,6 +19,12 @@ export type { AiExecutionObserver, AiExecutionOutcome, AiExecutionScope, AiExecu
 export type { AiProviderHealth, AiProviderHealthSource, AiRoutingDecision, AiRoutingMode, AiRoutingPolicyOptions, AiRoutingReason } from './routingPolicy.js';
 export { SELF_HOSTED_CAPABILITIES, SELF_HOSTED_PROVIDER_ID, SelfHostedHttpTransport, SelfHostedTravelAiProvider } from './selfHosted.js';
 export type { SelfHostedAiTransport, SelfHostedHttpTransportOptions, SelfHostedTransportRequest, SelfHostedTransportResponse, SelfHostedTravelAiProviderOptions } from './selfHosted.js';
+export { INTENT_BENCHMARK_DATASET_VERSION, INTENT_BENCHMARK_GATE, gateIntentBenchmark, summarizeIntentBenchmark } from './benchmark.js';
+export { FINAL_INTENT_FIXTURE_IDS, INTENT_BENCHMARK_FIXTURES, SMOKE_INTENT_FIXTURE_IDS, intentFixturesFor } from './intentBenchmarkFixtures.js';
+export type { BenchmarkFailureCategory, IntentBenchmarkGate, IntentBenchmarkRun, IntentBenchmarkSummary, IntentFixtureResult } from './benchmark.js';
+export type { IntentBenchmarkExpectation, IntentBenchmarkFixture } from './intentBenchmarkFixtures.js';
+export { BOUNDED_DECISION_FIXTURES } from './boundedDecisionFixtures.js';
+export type { BoundedDecisionFixture } from './boundedDecisionFixtures.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';

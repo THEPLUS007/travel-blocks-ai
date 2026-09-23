@@ -130,11 +130,10 @@ P1-4 makes failure and incomplete data behavior measurable before a second LLM p
 
 ### P1-5 — AI Execution Platform
 
-**Status: COMPLETE**
+**Status: COMPLETE — no local model eligible for staging**
 
 Full name: **LLM Provider Abstraction · Model Routing · Self-hosted LLM · Scope · Provenance**
 
-**Status: IN PROGRESS**
 
 P1-5 is not a rewrite of `TravelAiProvider`. It evolves the existing boundary so task execution can be routed while domain contracts and factual provider ownership remain unchanged.
 
@@ -203,7 +202,9 @@ Make the context boundary explicit: which Trip, Day, verified places and prior r
 P1-5E adds a provider-neutral, payload-free execution scope and terminal provenance observer at the Router boundary. Execution ID and clock are injectable; routing and provenance share the same ID. The scope records task/capability/selection metadata, not user content. Terminal provenance records provider/model/routing/outcome/duration and an existing normalized provider failure category when available. It does not persist to the DB or public API, and does not change routing, retry, fallback, prompts, schemas, or domain ownership.
 #### P1-5F — Benchmark / Production Quality Gate
 
-Compare Gemini and self-hosted candidates using fixed datasets. Measure schema success, task correctness, latency and failure behavior. Enable production routing only for provider-task pairs that pass declared thresholds; otherwise retain Gemini or fail explicitly.
+**Status: COMPLETE — no local model eligible for staging**
+
+The 2026-09-23 isolated ARM local bake-off used a 34-fixture synthetic intent dataset, deterministic gate, loopback/authenticated two-thread llama.cpp runtime, and official Qwen3-4B Q4_K_M plus Gemma 4 E2B Q4_0 artifacts. Candidate A was excluded for incomplete community-conversion provenance. B/C each exceeded the 30-second first-fixture hard deadline and were stopped, so no model passed schema/field/latency/failure gates and Gemini routing remains unchanged. See `P1-5F_LOCAL_MODEL_BAKEOFF.md`.
 
 ### P1-6 — Trust / Explainability UI
 
@@ -599,3 +600,8 @@ Travel Blocks AI 저장소에서 P1-5F — Benchmark / Production Quality Gate�
 ```
 
 P1-4 implementation evidence: deterministic provider failure matrix, bounded retry ownership regression, prompt/data-boundary checks, partial-category fail-closed behavior, and local verification are in the focused resilience commit. CI is the final completion gate before P1-5 starts.
+
+
+### Future work — bounded itinerary candidate decision (un-numbered)
+
+This does not change existing stage numbering (including Pencil-KG or military-map work). A separately approved future slice may take only provider facts and opaque candidate IDs through a deterministic feasibility filter, then return `selected`/`alternative`/`rejected`, deterministic reason codes, and rejected-candidate provenance. It may add a clearly bounded “AI가 함께 검토한 장소” UI only after trust review, and must never expose raw chain-of-thought. It is not implemented by P1-5F.

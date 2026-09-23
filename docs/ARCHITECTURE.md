@@ -68,3 +68,8 @@ Nginx가 HTTPS same-origin의 static web release와 `/api/*` reverse proxy를 �
 ## AI task contract layer (P1-5A)
 
 `packages/ai/src/tasks.ts` defines the four logical AI task contracts consumed by adapters. Each definition reuses the shared input/output Zod schema identity and declares capability, timeout class, and explicit-failure fallback policy. `packages/ai/src/router.ts` keeps an exhaustive Gemini static baseline table and startup capability validation; `packages/ai/src/routingPolicy.ts` adds typed policy decisions and an injectable `healthy`/`unhealthy`/`unknown` readiness source. Routing-decision observation is safe metadata only and observer failure cannot alter task execution.
+
+
+## P1-5F isolated local benchmark
+
+The benchmark runner and localhost-only wrapper are development/PoC tooling, not part of the API composition root or deployment topology. They preserve the self-hosted transport contract while enforcing an `extract_intent`/model allowlist, sequential execution, bearer auth, and a separate loopback port. The completed 2026-09-23 bake-off certified no model; production architecture and routing remain unchanged. Details are in `P1-5F_LOCAL_MODEL_BAKEOFF.md`.

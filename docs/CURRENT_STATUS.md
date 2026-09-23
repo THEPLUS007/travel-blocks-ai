@@ -12,17 +12,18 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | IN PROGRESS | P1-1~P1-5E complete; P1-5F next |
+| P1 — Quality, feasibility, trust, AI execution | COMPLETE | P1-1~P1-5F complete; no local model eligible for staging |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
 | P1-4 — Provider resilience & regression quality gate | COMPLETE | `ed24990a`; CI Quality/E2E/PostgreSQL SUCCESS |
-| P1-5 — AI Execution Platform | IN PROGRESS | P1-5A~E complete; P1-5F next |
+| P1-5 — AI Execution Platform | COMPLETE | P1-5A~F complete; Gemini production routing retained |
 | P1-5A — AI task contracts | COMPLETE | `ebdc1bc`; contract tests and full verification PASS |
 | P1-5B — LLM Gateway / Router Skeleton | COMPLETE | `16535c1`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5C — Self-hosted LLM PoC | COMPLETE | 8313ce7; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5D — Explicit Routing Policy | COMPLETE | `44a3825`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
+| P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
 
 ## Current production architecture
@@ -134,3 +135,8 @@ P1-5A defines four immutable task contracts backed by the existing shared Zod sc
 Each Router invocation creates a new immutable, payload-free execution scope with an injected execution ID/clock, logical task, required capability, start time, selected provider/model, routing mode/reason, and routing decision. The terminal provider result produces safe provider-neutral provenance with the same execution ID, outcome, completion/duration, and known `AiProviderError` category (or `unknown`). Routing and provider lifecycle behavior remain unchanged: selection occurs once, execution occurs once, and there is no retry/fallback. Provenance is emitted only through an observer side-effect boundary; it is not stored in PostgreSQL, exposed by HTTP, or added to Trip/TravelBlock. It excludes prompt/input/output/raw response/token/header/user content. AI execution provenance is separate from Places/opening-hours factual provenance.
 
 `02293a6` adds immutable request-local execution scope, correlated routing/provenance events, task-aware provider model metadata, safe terminal provenance, and observer-failure isolation. AI tests (90), full verify, evaluation baseline (8/8 scenarios and 98/98 checks), PostgreSQL, and production audit passed. Local E2E was blocked by the existing port-3000 API without stopping it; GitHub Actions Quality, E2E, and PostgreSQL passed for the implementation commit. No live Gemini, Places, Routes, or self-hosted inference call, deployment, restart, public API change, DB migration, or provenance persistence occurred.
+
+
+## P1-5F verification
+
+`P1-5F_LOCAL_MODEL_BAKEOFF.md` records the 2026-09-23 isolated ARM 2-vCPU PoC. Candidate A did not meet community-conversion provenance requirements and was not downloaded. Official Qwen3-4B Q4_K_M and Gemma 4 E2B Q4_0 were loaded sequentially with loopback-only, authenticated, two-thread runtimes; both first synthetic warm-ups exceeded the 30-second hard deadline and were stopped before output. MemAvailable stayed above 9.7 GiB and production health stayed `ok`. P1-5F is complete with **no local model eligible for staging**. No production routing, API, schema, database, deployment, or restart occurred; external managed-provider calls remained zero. The deterministic benchmark suite adds 34 synthetic intent fixtures plus six future-only bounded-decision fixtures; live raw prompts/responses and artifacts are not stored in Git.
