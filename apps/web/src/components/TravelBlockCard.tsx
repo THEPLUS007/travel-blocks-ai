@@ -46,6 +46,7 @@ export function TravelBlockCard({
   isConnectionTarget = false,
 }: TravelBlockCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isPlaceVerified = block.place?.verified === true;
   const showActions = !hideActions && Boolean(onEdit || onDelete || onCopy || onMoveToDay || onConnectStart);
   const targetDays = days.filter((day) => day.id !== dayId);
 
@@ -105,6 +106,14 @@ export function TravelBlockCard({
             </span>
             <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${getPriceBadgeTone(block.priceLevel)}`}>
               {PRICE_LEVEL_LABELS[block.priceLevel]}
+            </span>
+            <span
+              className={`rounded-md px-2 py-0.5 text-xs font-bold ${
+                isPlaceVerified ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
+              }`}
+              aria-label={isPlaceVerified ? '장소 확인됨: 장소 제공자와 연결됨' : '장소 미확인: 장소 제공자 연결 없음'}
+            >
+              {isPlaceVerified ? '장소 확인됨' : '장소 미확인'}
             </span>
           </div>
           <h3 className="mt-1 truncate text-sm font-bold text-slate-950">{block.title}</h3>
@@ -194,6 +203,12 @@ export function TravelBlockCard({
 
       {block.memo ? (
         <p className={`mt-2 text-xs leading-5 text-slate-600 ${isExpanded ? '' : 'line-clamp-1'}`}>{block.memo}</p>
+      ) : null}
+
+      {isExpanded ? (
+        <p className="mt-2 rounded-md bg-slate-50 px-2 py-1.5 text-xs leading-5 text-slate-600">
+          장소 제공자 확인은 장소 identity 연결에만 적용됩니다. 시간·예상 비용·메모·영업시간·실제 이동시간은 별도로 확인되지 않았습니다.
+        </p>
       ) : null}
 
       {isConnectionTarget && onConnectTarget ? (

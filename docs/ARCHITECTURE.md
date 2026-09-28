@@ -61,6 +61,14 @@ Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`�
 
 AI execution provenance is distinct from factual provenance: Places/opening-hours provenance records real-world provider facts and retrieval information, while AI provenance records only safe execution metadata. The latter is observer-only in P1-5E—never persisted, returned through public API, or attached to `Trip`/`TravelBlock`; it excludes input, output, prompt, raw response, secrets, headers, and user content. Observer errors cannot change task results.
 
+## Trust UI and future decision boundary
+
+`apps/web` is the user-facing product application. P1-6 Trust UI consumes only the existing public itinerary data; it does not create an independent frontend trust or decision engine. A block is shown as place-confirmed only when `TravelBlock.place?.verified === true`, which means an external place-provider identity connection for the place name/address. It does not confirm the scheduled time, cost, memo, opening hours, route, travel time, the full itinerary, or AI judgment quality.
+
+Opening-hours feasibility and AI execution provenance are not current public UI contracts: the former is not connected to the runtime itinerary payload, and the latter remains observer-only. The UI therefore states that hours and actual route/travel-time data are not currently provided, rather than deriving a status.
+
+The future Decision Engine will first be separated as a package/module boundary in this monorepo, then extracted as a deployable service only in P3. It is not part of the web application or P1-6.
+
 ## Production serving boundary
 
 Nginx가 HTTPS same-origin의 static web release와 `/api/*` reverse proxy를 담당합니다. Production Vite build는 root base(`/`)를 사용해 SPA nested route에서도 asset/API URL을 유지합니다. API는 systemd 아래 non-root로 `127.0.0.1:3000`에 bind하고 local PostgreSQL에 연결합니다. Repository `deploy/` template과 `scripts/`는 phase 5 적용을 준비하며 CI는 배포 없이 검증만 수행합니다.

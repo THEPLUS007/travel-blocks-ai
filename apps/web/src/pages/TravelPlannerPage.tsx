@@ -7,6 +7,7 @@ import { Header } from '../components/Header';
 import { Onboarding } from '../components/Onboarding';
 import { RecommendationPanel } from '../components/RecommendationPanel';
 import { StatusBanner } from '../components/StatusBanner';
+import { TrustPanel } from '../components/TrustPanel';
 import { TripForm } from '../components/TripForm';
 import { useTravelPlanner } from '../hooks/useTravelPlanner';
 import type { SavedTravelPlan, TripFormData } from '../types/travel';
@@ -117,6 +118,9 @@ export function TravelPlannerPage() {
     setActiveModal(null);
   };
 
+  const hasGeneratedItinerary =
+    planner.hasStarted && !planner.isAnalyzing && !planner.errorMessage && planner.days.some((day) => day.blocks.length > 0);
+
   if (screen === 'loading') {
     return <div className="min-h-screen bg-slate-50" data-testid="entry-loading-screen" />;
   }
@@ -178,28 +182,31 @@ export function TravelPlannerPage() {
           </div>
         </aside>
 
-        <DayBoard
-          days={planner.days}
-          connections={planner.connections}
-          selectedDayId={planner.selectedDayId}
-          onSelectDay={planner.setSelectedDayId}
-          onAddDay={planner.addDay}
-          onDeleteDay={planner.deleteDay}
-          onRenameDay={planner.renameDay}
-          onDayDragStart={planner.startDayDrag}
-          onDropDay={planner.dropDay}
-          onAddBlock={planner.addBlock}
-          onUpdateBlock={planner.updateBlock}
-          onDeleteBlock={planner.deleteBlock}
-          onCopyBlock={planner.copyBlock}
-          onMoveBlockToDay={planner.moveBlockToDay}
-          onAddConnection={planner.addConnection}
-          onUpdateConnection={planner.updateConnection}
-          onDeleteConnection={planner.deleteConnection}
-          onDragStart={(sourceDayId, sourceBlockId) => planner.startDrag({ sourceDayId, sourceBlockId })}
-          onDropOnDay={planner.dropOnDay}
-          onDropOnBlock={planner.dropOnBlock}
-        />
+        <div className="space-y-4">
+          {hasGeneratedItinerary ? <TrustPanel days={planner.days} /> : null}
+          <DayBoard
+            days={planner.days}
+            connections={planner.connections}
+            selectedDayId={planner.selectedDayId}
+            onSelectDay={planner.setSelectedDayId}
+            onAddDay={planner.addDay}
+            onDeleteDay={planner.deleteDay}
+            onRenameDay={planner.renameDay}
+            onDayDragStart={planner.startDayDrag}
+            onDropDay={planner.dropDay}
+            onAddBlock={planner.addBlock}
+            onUpdateBlock={planner.updateBlock}
+            onDeleteBlock={planner.deleteBlock}
+            onCopyBlock={planner.copyBlock}
+            onMoveBlockToDay={planner.moveBlockToDay}
+            onAddConnection={planner.addConnection}
+            onUpdateConnection={planner.updateConnection}
+            onDeleteConnection={planner.deleteConnection}
+            onDragStart={(sourceDayId, sourceBlockId) => planner.startDrag({ sourceDayId, sourceBlockId })}
+            onDropOnDay={planner.dropOnDay}
+            onDropOnBlock={planner.dropOnBlock}
+          />
+        </div>
       </main>
 
       {planner.statusMessage || planner.errorMessage ? (
