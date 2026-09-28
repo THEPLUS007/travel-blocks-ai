@@ -16,7 +16,7 @@ test('app contract smoke with test providers: generate, recommend, save, reopen,
   await expect.poll(async () => page.locator('article').count(), { timeout: 30_000 }).toBeGreaterThan(2);
   await expect(page.getByTestId('trust-panel')).toBeVisible();
   await expect(page.getByText('0 / 4 블록이 장소 제공자 정보와 연결되어 있습니다.')).toBeVisible();
-  await expect(page.getByText('장소 미확인')).toHaveCount(4);
+  await expect(page.locator('article').getByText('장소 미확인')).toHaveCount(4);
   await expect(page.getByText('영업시간은 현재 일정 생성 경로에서 확인되지 않았습니다.')).toBeVisible();
   await expect(page.getByText('실제 경로와 이동시간은 현재 제공되지 않습니다.')).toBeVisible();
   await expect(page.getByText('영업 중')).toHaveCount(0);
