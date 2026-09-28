@@ -56,6 +56,8 @@ Established provider boundaries, structured AI output, grounding, PostgreSQL, se
 
 ## P1 — Quality, feasibility, trust and AI execution
 
+**Status: COMPLETE**
+
 ### P1-1 — Deterministic evaluation baseline
 
 **Status: COMPLETE**
@@ -208,16 +210,65 @@ The 2026-09-23 isolated ARM local bake-off used a 34-fixture synthetic intent da
 
 ### P1-6 — Trust / Explainability UI
 
-**Status: PLANNED**
+**Status: COMPLETE**
 
-- distinguish provider-confirmed facts from AI inference
-- show unknown/unverified information without pretending certainty
-- show quality warnings and feasibility status
-- expose last verified/retrieved time where useful
-- explain partial provider coverage in user language
-- avoid raw internal issue objects, provider payloads or sensitive telemetry
+- itinerary summary and per-block text badges distinguish provider-linked places from unverified blocks
+- frontend uses only `TravelBlock.place?.verified === true`; it does not create an independent trust or decision engine
+- place confirmation is limited to the place identity connection and does not certify time, cost, memo, opening hours, routes, travel time, itinerary validity, or AI judgment
+- where the current public payload has no result, the UI explicitly states that opening hours and actual routes/travel time are not provided
+- avoids provider IDs, raw provider payloads, telemetry, AI provenance, and sensitive internal details
 
-P1-6 consumes the trust/provenance contracts built in P1-3~P1-5. It must not invent a second independent quality model in the frontend.
+P1-6 consumes the existing public itinerary data only. It does not add provider lookups, public provenance contracts, schema changes, or backend behavior.
+
+## P2 — Decision Engine
+
+**Status: DESIGN DEFINED**
+
+P2 begins inside this monorepo as a package/module boundary. It does not add a separately deployed service, Docker, or a public AI provenance surface. Gemini remains the default production routing while this work is developed.
+
+### P2-DE-0 — Decision Engine ADR and boundary
+
+Define ownership, input/output boundaries, fact/inference/decision separation, and the package/module seam. No runtime decision engine yet.
+
+### P2-DE-1 — Provider-neutral candidate and decision contracts
+
+Define versioned candidate, factual-enrichment, decision, and safe reason-code contracts without coupling them to a provider or UI.
+
+### P2-DE-2 — Deterministic pure decision engine
+
+Implement pure, reproducible candidate filtering and selection rules with deterministic tests. It does not call AI or providers.
+
+### P2-DE-3 — Bounded AI judge
+
+Add a strictly bounded AI judgment input/output behind the existing routing boundary; it cannot replace provider facts or deterministic decisions.
+
+### P2-FE-1 — Candidate factual enrichment
+
+Add explicit factual enrichment coverage for candidates, with partial/unknown states rather than inferred facts.
+
+### P2-DE-4 — Versioned Decision API integration
+
+Integrate the versioned decision contract through the application/API boundary after the package contracts are stable.
+
+### P2-DE-5 — Considered-place and rejected-candidate UI
+
+Show considered and rejected candidates only from the versioned decision result, with safe reason codes and no raw model reasoning.
+
+### P2-DE-6 — Decision snapshots and evaluation
+
+Add reproducible snapshots, evaluations, and regression gates for decision behavior.
+
+## P3 — Deployable Decision Service
+
+Extract the stabilized Decision Engine into a separately deployable service only after P2 establishes its module and execution contracts.
+
+### P3-Docker — Docker image, Compose, health/readiness, rollback
+
+Introduce Docker only after the service boundary and runtime contract are stable, including health/readiness and rollback behavior.
+
+## P4 — Dedicated model and inference study
+
+Reassess local or dedicated models after decision evaluation evidence exists. P1-5F found no local model eligible for production on the current 2-vCPU server; the default production AI routing remains Gemini-only.
 
 ## Deferred beyond P1
 
@@ -602,6 +653,6 @@ Travel Blocks AI 저장소에서 P1-5F — Benchmark / Production Quality Gate�
 P1-4 implementation evidence: deterministic provider failure matrix, bounded retry ownership regression, prompt/data-boundary checks, partial-category fail-closed behavior, and local verification are in the focused resilience commit. CI is the final completion gate before P1-5 starts.
 
 
-### Future work — bounded itinerary candidate decision (un-numbered)
+### Superseded future-decision note
 
-This does not change existing stage numbering (including Pencil-KG or military-map work). A separately approved future slice may take only provider facts and opaque candidate IDs through a deterministic feasibility filter, then return `selected`/`alternative`/`rejected`, deterministic reason codes, and rejected-candidate provenance. It may add a clearly bounded “AI가 함께 검토한 장소” UI only after trust review, and must never expose raw chain-of-thought. It is not implemented by P1-5F.
+The earlier unnumbered candidate-decision proposal is superseded by the P2-DE-0 through P2-DE-6 sequence above. It remains unimplemented until those stages begin.

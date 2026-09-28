@@ -1,9 +1,9 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-09-22**
+Last verified: **2026-09-28**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
-Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
+Verified implementation baseline: `867ac02ccf1e5f793438a4a1ad02035d796b242e`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
@@ -12,7 +12,7 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | Phase | Status | Evidence |
 |---|---|---|
 | P0 — Production baseline hardening | COMPLETE | 배포·DB·CI·provider·security baseline |
-| P1 — Quality, feasibility, trust, AI execution | COMPLETE | P1-1~P1-5F complete; no local model eligible for staging |
+| P1 — Quality, feasibility, trust, AI execution | COMPLETE | P1-1~P1-6 complete; Gemini-only routing retained |
 | P1-1 — Deterministic evaluation baseline | COMPLETE | `c7e8ef870fdcaff5abbaec667417a7e58949968f` |
 | P1-2 — Geographic feasibility | COMPLETE | `fc1adedce459e357df05e74f6b1e442c9f91274b` |
 | P1-3 — Opening-hours feasibility foundation | COMPLETE | `01e29ac845e9df97eba8577c78d1190a2b44efcc` |
@@ -24,7 +24,7 @@ Verified implementation baseline: `ed24990a2745aed3c1c8e2e73a73fa34278f9e65`
 | P1-5D — Explicit Routing Policy | COMPLETE | `44a3825`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
-| P1-6 — Trust / Explainability UI | PLANNED | Not implemented |
+| P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -79,6 +79,14 @@ The P0 production baseline was deployed previously. The P1-3 commit itself was *
 - provider facts separated from deterministic feasibility decisions
 - lazy `PlaceOpeningHoursProvider` capability using Google Place Details fields
 
+### P1-6 Trust UI
+
+- itinerary-level summary of total, provider-linked, and unverified block counts
+- per-block text badges based only on `block.place?.verified === true`
+- explicit user-facing boundary: place identity connection does not verify time, cost, memo, opening hours, routes, travel time, itinerary quality, or AI judgment
+- explicit unknown states for opening hours and actual routes/travel time
+- no public API/schema/DB/AI routing change and no new provider call
+
 The opening-hours foundation currently participates in deterministic domain/evaluation fixtures. It does not yet change public API schemas, persisted Trip/TravelBlock data, or the production trip-generation path.
 
 ## P1-3 verification snapshot
@@ -109,13 +117,17 @@ The opening-hours foundation currently participates in deterministic domain/eval
 - application-data scope/source provenance and durable provenance persistence
 - local-vs-Gemini benchmark and production routing quality gate
 - durable background queue/worker runtime
-- trust/provenance/quality-warning UI
+- public AI provenance, opening-hours feasibility, and route/travel-time results on the itinerary payload
 - YouTube transcript extraction
 - full login UI, booking, payment, price comparison, collaboration
 
 ## Current work
 
-Next planned implementation: **P1-5F — Benchmark / Production Quality Gate**. P1-5E is complete.
+P1-6 COMPLETE
+
+P1 COMPLETE
+
+Next: **P2-DE-0 — Decision Engine ADR and boundary**
 
 ## P1-4 verification addendum
 
@@ -140,3 +152,9 @@ Each Router invocation creates a new immutable, payload-free execution scope wit
 ## P1-5F verification
 
 `P1-5F_LOCAL_MODEL_BAKEOFF.md` records the 2026-09-23 isolated ARM 2-vCPU PoC. Candidate A did not meet community-conversion provenance requirements and was not downloaded. Official Qwen3-4B Q4_K_M and Gemma 4 E2B Q4_0 were loaded sequentially with loopback-only, authenticated, two-thread runtimes; both first synthetic warm-ups exceeded the 30-second hard deadline and were stopped before output. MemAvailable stayed above 9.7 GiB and production health stayed `ok`. P1-5F is complete with **no local model eligible for staging**. No production routing, API, schema, database, deployment, or restart occurred; external managed-provider calls remained zero. The deterministic benchmark suite adds 34 synthetic intent fixtures plus six future-only bounded-decision fixtures; live raw prompts/responses and artifacts are not stored in Git.
+
+## P1-6 verification
+
+`0098d93` adds the Trust Summary and block badges; `867ac02` corrects the deterministic E2E selector to count only block badges. The web UI consumes the existing public `TravelBlock.place` reference and renders `장소 확인됨` only for `verified === true`; all other blocks render `장소 미확인`. It does not expose provider IDs, opening-hours feasibility, route calculations, AI execution provenance, or new inferred confidence data.
+
+Node 22.23.2 / npm 10.9.8 completed `npm ci`, web lint/build, `npm run verify` (domain 30, AI 93, API 114 tests), and `npm run eval` (8/8 scenarios, 98/98 checks). `npm audit --omit=dev` reported 0 vulnerabilities. Local PostgreSQL verification was safely blocked because the CI-only test database was unavailable (authentication failed); GitHub Actions run `36431436242` then passed Quality, E2E, and PostgreSQL. Local E2E was not run because an existing listener occupied port 3000 and the fixed test configuration has no isolated API port; no process was stopped. No Gemini, Places, Routes, self-hosted, or other managed-LLM call, deployment, restart, or migration occurred.
