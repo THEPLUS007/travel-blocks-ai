@@ -234,9 +234,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-1 — Provider-neutral candidate and decision contracts
 
-**Status: PLANNED**
+**Status: COMPLETE**
 
-Define versioned candidate, factual-enrichment, decision, and safe reason-code contracts without coupling them to a provider or UI.
+`@travel-blocks/decision-engine` defines strict, versioned provider-neutral Candidate, factual snapshot, DecisionRequest, selected/rejected/unresolved DecisionItem, DecisionResult, safe reason/provenance contracts, and semantic validators. Candidate/fact reference integrity and a total, exclusive candidate partition prevent dangling references and silent drops; unknown facts remain `unresolved`-eligible rather than being converted to rejected. The package is not connected to production request paths and adds no deterministic rules, scoring, AI Judge, provider calls, public API, Trip/TravelBlock change, database migration, Docker, or service. `45ef7fd` passed clean install, decision-engine tests, full verify, deterministic evaluation (8/8 scenarios, 98/98 checks), production audit (0 vulnerabilities), and GitHub Actions Quality/E2E/PostgreSQL.
 
 ### P2-DE-2 — Deterministic pure decision engine
 
