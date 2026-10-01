@@ -222,53 +222,69 @@ P1-6 consumes the existing public itinerary data only. It does not add provider 
 
 ## P2 — Decision Engine
 
-**Status: DESIGN DEFINED**
+**Status: IN PROGRESS**
 
-P2 begins inside this monorepo as a package/module boundary. It does not add a separately deployed service, Docker, or a public AI provenance surface. Gemini remains the default production routing while this work is developed.
+P2 begins inside this monorepo as a package/module boundary. It does not add a separately deployed service, Docker, or a public AI provenance surface. Gemini remains the default production routing while this work is developed. Current implementation and the planned P2/P3 boundary are kept distinct in [ARCHITECTURE.md](ARCHITECTURE.md); the accepted design record is [ADR 0001](adr/0001-decision-engine-boundary.md).
 
 ### P2-DE-0 — Decision Engine ADR and boundary
 
-Define ownership, input/output boundaries, fact/inference/decision separation, and the package/module seam. No runtime decision engine yet.
+**Status: IN PROGRESS — validation pending**
+
+Define ownership, input/output boundaries, fact/inference/decision separation, candidate lifecycle/result semantics, failure/unknown semantics, and the package/module seam. The accepted ADR fixes P2 delivery order and P3 extraction/Docker conditions. No runtime Decision Engine, package, schema, API, database, UI, provider call, or deployment is added. Mark COMPLETE only after the required validation and CI evidence succeeds.
 
 ### P2-DE-1 — Provider-neutral candidate and decision contracts
+
+**Status: PLANNED**
 
 Define versioned candidate, factual-enrichment, decision, and safe reason-code contracts without coupling them to a provider or UI.
 
 ### P2-DE-2 — Deterministic pure decision engine
 
+**Status: PLANNED**
+
 Implement pure, reproducible candidate filtering and selection rules with deterministic tests. It does not call AI or providers.
-
-### P2-DE-3 — Bounded AI judge
-
-Add a strictly bounded AI judgment input/output behind the existing routing boundary; it cannot replace provider facts or deterministic decisions.
 
 ### P2-FE-1 — Candidate factual enrichment
 
-Add explicit factual enrichment coverage for candidates, with partial/unknown states rather than inferred facts.
+**Status: PLANNED**
+
+Add explicit factual enrichment coverage for candidates, with partial/unknown states rather than inferred facts. Runtime enrichment precedes deterministic decision and AI judgment; the pure engine may use fixture facts before this integration exists.
+
+### P2-DE-3 — Bounded AI judge
+
+**Status: PLANNED**
+
+Add a strictly bounded AI judgment input/output behind the existing routing boundary after enrichment and hard-rule filtering. It cannot replace provider facts, override deterministic hard decisions, or own the final result.
 
 ### P2-DE-4 — Versioned Decision API integration
+
+**Status: PLANNED**
 
 Integrate the versioned decision contract through the application/API boundary after the package contracts are stable.
 
 ### P2-DE-5 — Considered-place and rejected-candidate UI
 
+**Status: PLANNED**
+
 Show considered and rejected candidates only from the versioned decision result, with safe reason codes and no raw model reasoning.
 
 ### P2-DE-6 — Decision snapshots and evaluation
+
+**Status: PLANNED**
 
 Add reproducible snapshots, evaluations, and regression gates for decision behavior.
 
 ## P3 — Deployable Decision Service
 
-Extract the stabilized Decision Engine into a separately deployable service only after P2 establishes its module and execution contracts.
+Extract the stabilized Decision Engine into a separately deployable service only after P2 establishes stable contracts, deterministic evaluation, a versioned Decision API, failure semantics, measurable latency/performance, and separation of module from transport responsibility. P3 remains in this monorepo.
 
 ### P3-Docker — Docker image, Compose, health/readiness, rollback
 
-Introduce Docker only after the service boundary and runtime contract are stable, including health/readiness and rollback behavior.
+Introduce `apps/decision-service`, versioned internal HTTP, health/readiness, timeout/failure boundaries, Docker image, Compose, resource limits, rollback procedure, and deployment documentation only after the P3 service boundary and runtime contract are stable.
 
 ## P4 — Dedicated model and inference study
 
-Reassess local or dedicated models after decision evaluation evidence exists. P1-5F found no local model eligible for production on the current 2-vCPU server; the default production AI routing remains Gemini-only.
+Use P2-DE-6 decision fixtures/evidence to reassess a dedicated ranking model, small preference classifier, self-hosted bounded judge, managed judge comparison, fine-tuning, or distillation. P1-5F found no local model eligible for production on the current ARM 2-vCPU server: Qwen3-4B and Gemma 4 E2B did not meet the 30-second requirement. P2 production routing remains Gemini-only.
 
 ## Deferred beyond P1
 

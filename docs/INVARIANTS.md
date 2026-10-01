@@ -26,7 +26,7 @@
 
 6. **중요한 provider fact는 출처를 추적할 수 있어야 합니다.** 최소한 provider, provider place ID, source, `retrievedAt`을 보존하거나 결과와 연결할 수 있어야 합니다.
 
-7. **불완전한 데이터는 완전한 데이터처럼 표현하지 않습니다.** 누락·오래된 정보·검증 불가·부분 실패는 `unknown`, `caution`, coverage, quality flag 같은 명시적 상태로 전달합니다.
+7. **불완전한 데이터는 완전한 데이터처럼 표현하지 않습니다.** 누락·오래된 정보·검증 불가·부분 실패는 `unknown`, `caution`, coverage, quality flag 같은 명시적 상태로 전달하며, `unknown`을 `false`로 강제 변환하지 않습니다.
 
 8. **정보가 없다는 사실은 성공적인 `unknown`일 수 있습니다.** 예를 들어 정상적인 장소 상세 조회에 영업시간이 없으면 값을 추측하거나 provider 실패로 위장하지 않습니다.
 
@@ -40,7 +40,7 @@
 
 12. **AI에게는 task 수행에 필요한 최소 scope만 제공합니다.** 다른 사용자 데이터나 관련 없는 Trip/Day/history를 암묵적으로 포함하지 않습니다.
 
-13. **중요한 AI 실행은 안전한 metadata로 추적 가능해야 합니다.** provider, model, task, status, latency, token usage, fallback 여부, scope/source 식별자를 기록할 수 있어야 하며 prompt 원문, provider raw response, secret은 기록하지 않습니다.
+13. **중요한 AI 실행은 안전한 metadata로 추적 가능해야 합니다.** provider, model, task, status, latency, token usage, fallback 여부, scope/source 식별자를 기록할 수 있어야 하며 prompt 원문, provider raw response, raw chain-of-thought, secret은 기록하거나 노출하지 않습니다.
 
 14. **Fallback은 task별 명시적 정책입니다.** 품질 계약을 충족하지 못하는 provider로 무조건 성공 처리하지 않으며, 허용되지 않은 경우 명확하게 실패합니다.
 
@@ -71,3 +71,5 @@
 24. **완료는 검증 증거를 요구합니다.** 관련 test, lint, typecheck, build, evaluation과 문서 정리가 끝나지 않은 변경을 완료로 표시하지 않습니다.
 
 25. **P1의 품질 검증은 외부 호출 없이 재현 가능해야 합니다.** live provider 검증은 별도의 명시적 절차이며 기본 CI와 deterministic evaluation에 섞지 않습니다.
+
+26. **UI는 versioned Decision Result 없이 독자적인 판단 상태를 만들지 않습니다.** 표시되는 candidate 상태와 사유는 provider-confirmed fact, safe reason code, coverage, 제한된 안전 provenance에 근거해야 합니다.

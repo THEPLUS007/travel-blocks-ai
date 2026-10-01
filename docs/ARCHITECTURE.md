@@ -1,6 +1,10 @@
 # Architecture
 
-`apps/web`은 기존 React/Vite 편집 UI, `apps/api`는 개발·production에서 동일하게 실행되는 Fastify API, `apps/mcp`는 격리된 JSON-RPC MCP입니다. `packages/shared`가 Zod 계약과 inferred 타입을, `packages/domain`이 순수 편집 규칙을, `packages/ai`가 provider adapter를, `packages/test-fixtures`가 외부 서비스 없는 테스트 provider를 제공합니다.
+This document distinguishes implemented architecture from planned boundaries. Current implementation status belongs in [CURRENT_STATUS.md](CURRENT_STATUS.md); phase ordering belongs in [ROADMAP.md](ROADMAP.md); the P2 Decision Engine record is [ADR 0001](adr/0001-decision-engine-boundary.md).
+
+## Current P1 runtime — implemented
+
+`apps/web`은 기존 React/Vite 편집 UI, `apps/api`는 개발·production에서 동일하게 실행되는 Fastify API, `apps/mcp`는 격리된 JSON-RPC MCP입니다. `packages/shared`가 Zod 계약과 inferred 타입을, `packages/domain`이 순수 편집 규칙을, `packages/ai`가 provider adapter를, `packages/test-fixtures`가 외부 서비스 없는 테스트 provider를 제공합니다. 이 둘(`apps/web`, `apps/api`)이 사용자-facing **Product Application**입니다.
 
 웹은 Vite middleware를 사용하지 않으며 개발 시 `/api`만 독립 API 서버로 proxy합니다. API 요청은 auth → Zod 검증 → repository/provider → 계약 응답 순서로 처리됩니다.
 
@@ -61,13 +65,48 @@ Opening-hours snapshot에는 provider, provider place ID, source, `retrievedAt`�
 
 AI execution provenance is distinct from factual provenance: Places/opening-hours provenance records real-world provider facts and retrieval information, while AI provenance records only safe execution metadata. The latter is observer-only in P1-5E—never persisted, returned through public API, or attached to `Trip`/`TravelBlock`; it excludes input, output, prompt, raw response, secrets, headers, and user content. Observer errors cannot change task results.
 
-## Trust UI and future decision boundary
+## Trust UI — implemented
 
 `apps/web` is the user-facing product application. P1-6 Trust UI consumes only the existing public itinerary data; it does not create an independent frontend trust or decision engine. A block is shown as place-confirmed only when `TravelBlock.place?.verified === true`, which means an external place-provider identity connection for the place name/address. It does not confirm the scheduled time, cost, memo, opening hours, route, travel time, the full itinerary, or AI judgment quality.
 
 Opening-hours feasibility and AI execution provenance are not current public UI contracts: the former is not connected to the runtime itinerary payload, and the latter remains observer-only. The UI therefore states that hours and actual route/travel-time data are not currently provided, rather than deriving a status.
 
-The future Decision Engine will first be separated as a package/module boundary in this monorepo, then extracted as a deployable service only in P3. It is not part of the web application or P1-6.
+## P2 Decision Engine module — planned, not implemented
+
+P2의 **Decision Engine**은 후보 장소를 provider-neutral하게 평가해 `selected`, `rejected`, `unresolved`를 합성하는 domain/application module입니다. 이는 Product Application, factual provider, LLM Router, UI, repository, 또는 별도 service가 아닙니다. 목표 위치는 아직 생성되지 않은 `packages/decision-engine`입니다.
+
+```text
+apps/web
+    ↓
+apps/api — Product Application / orchestration
+    ↓
+packages/decision-engine
+    ├── provider-neutral contracts
+    ├── deterministic rules
+    ├── scoring and selection
+    ├── bounded judge port
+    └── safe decision result
+```
+
+목표 의존 방향은 `apps/api → packages/decision-engine → provider-neutral shared/domain contracts`입니다. Decision Engine은 `apps/api`, `apps/web`, HTTP, PostgreSQL, Gemini SDK, Google Places SDK, system clock, random에 의존하지 않습니다. composition root가 factual provider와 provider-neutral Bounded AI Judge port를 주입하며, pure rules는 `packages/ai`를 직접 호출하지 않습니다.
+
+목표 runtime 순서는 candidate retrieval → factual enrichment → deterministic filtering → deterministic scoring → optional bounded AI judgment → final Decision Result → Trip planning / considered-place UI입니다. P2-DE-2는 fixture fact로 pure engine을 먼저 만들 수 있지만 실제 runtime에서 enrichment는 hard rule 및 AI Judge보다 앞섭니다. `TravelBlock`은 selected final itinerary item으로 유지하며 rejected/unresolved 후보를 저장하지 않습니다. considered-place history가 필요하면 후속 단계에서 별도 DecisionSnapshot 또는 동등 aggregate를 결정합니다.
+
+## P3 Decision Service — planned, not implemented
+
+P2 contract, deterministic evaluation, versioned Decision API, failure semantics, latency/performance measurement, module/transport separation이 안정된 뒤에만 P3가 package를 internal HTTP service로 감쌉니다.
+
+```text
+apps/web
+    ↓
+apps/api — Product Application
+    ↓ internal versioned HTTP
+apps/decision-service
+    ↓
+packages/decision-engine
+```
+
+P3도 하나의 monorepo를 유지하지만 Product Application과 Decision Service는 별도 deployable unit입니다. P3에서 health/readiness, timeout/failure boundary, Dockerfile, Docker Compose, resource limit, rollback procedure, deployment documentation을 도입합니다. 따라서 Docker는 P2가 아니라 P3의 안정된 service boundary 이후에만 도입합니다.
 
 ## Production serving boundary
 
