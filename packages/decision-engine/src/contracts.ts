@@ -1,4 +1,4 @@
-import { TravelBlockCategorySchema } from '@travel-blocks/shared';
+import { TransportModeSchema, TravelBlockCategorySchema } from '@travel-blocks/shared';
 import { z } from 'zod';
 
 const IdentifierSchema = z.string().trim().min(1).max(160);
@@ -99,7 +99,7 @@ const KnownRouteFactSchema = z.object({
   value: z.object({
     distanceKm: z.number().finite().nonnegative().optional(),
     durationMinutes: z.number().finite().nonnegative().optional(),
-    transportMode: z.enum(['walk', 'bike', 'taxi', 'bus', 'subway', 'rental_car', 'flight', 'ferry']).optional(),
+    transportMode: TransportModeSchema.optional(),
   }).strict().refine((value) => value.distanceKm !== undefined || value.durationMinutes !== undefined, 'Route fact needs distance or duration.'),
 }).strict();
 const UnknownRouteFactSchema = z.object({ state: UnknownFactStateSchema }).strict();
