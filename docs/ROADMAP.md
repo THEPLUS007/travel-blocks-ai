@@ -228,9 +228,9 @@ P2 begins inside this monorepo as a package/module boundary. It does not add a s
 
 ### P2-DE-0 — Decision Engine ADR and boundary
 
-**Status: IN PROGRESS — validation pending**
+**Status: COMPLETE**
 
-Define ownership, input/output boundaries, fact/inference/decision separation, candidate lifecycle/result semantics, failure/unknown semantics, and the package/module seam. The accepted ADR fixes P2 delivery order and P3 extraction/Docker conditions. No runtime Decision Engine, package, schema, API, database, UI, provider call, or deployment is added. Mark COMPLETE only after the required validation and CI evidence succeeds.
+Define ownership, input/output boundaries, fact/inference/decision separation, candidate lifecycle/result semantics, failure/unknown semantics, and the package/module seam. The accepted ADR fixes P2 delivery order and P3 extraction/Docker conditions. No runtime Decision Engine, package, schema, API, database, UI, provider call, or deployment was added. Validation for `08d597c` completed after `7531510` remediated production dependency advisories: clean install, verify, deterministic evaluation (8/8 scenarios, 98/98 checks), production audit (0 vulnerabilities), and GitHub Actions Quality/E2E/PostgreSQL all passed.
 
 ### P2-DE-1 — Provider-neutral candidate and decision contracts
 

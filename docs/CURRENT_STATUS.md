@@ -1,9 +1,9 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-09-28**
+Last verified: **2026-10-01**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
-Verified implementation baseline: `867ac02ccf1e5f793438a4a1ad02035d796b242e`
+Verified implementation baseline: `753151047254c26ebc3e6626da31659ebb8c3c40`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
@@ -25,6 +25,8 @@ Verified implementation baseline: `867ac02ccf1e5f793438a4a1ad02035d796b242e`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 COMPLETE; P2-DE-1 is next |
+| P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -123,11 +125,17 @@ The opening-hours foundation currently participates in deterministic domain/eval
 
 ## Current work
 
-P1-6 COMPLETE
-
 P1 COMPLETE
 
-Next: **P2-DE-0 — Decision Engine ADR and boundary**
+P2 IN PROGRESS
+
+P2-DE-0 COMPLETE
+
+Production audit: **0 vulnerabilities**
+
+Production AI routing: **Gemini-only**
+
+Next: **P2-DE-1 — Provider-neutral candidate and decision contracts**
 
 ## P1-4 verification addendum
 
@@ -158,3 +166,7 @@ Each Router invocation creates a new immutable, payload-free execution scope wit
 `0098d93` adds the Trust Summary and block badges; `867ac02` corrects the deterministic E2E selector to count only block badges. The web UI consumes the existing public `TravelBlock.place` reference and renders `장소 확인됨` only for `verified === true`; all other blocks render `장소 미확인`. It does not expose provider IDs, opening-hours feasibility, route calculations, AI execution provenance, or new inferred confidence data.
 
 Node 22.23.2 / npm 10.9.8 completed `npm ci`, web lint/build, `npm run verify` (domain 30, AI 93, API 114 tests), and `npm run eval` (8/8 scenarios, 98/98 checks). `npm audit --omit=dev` reported 0 vulnerabilities. Local PostgreSQL verification was safely blocked because the CI-only test database was unavailable (authentication failed); GitHub Actions run `36431436242` then passed Quality, E2E, and PostgreSQL. Local E2E was not run because an existing listener occupied port 3000 and the fixed test configuration has no isolated API port; no process was stopped. No Gemini, Places, Routes, self-hosted, or other managed-LLM call, deployment, restart, or migration occurred.
+
+## P2-DE-0 validation
+
+`08d597c` defines the Decision Engine ADR and module boundary without adding a runtime engine, candidate/decision contract, public API, Trip/TravelBlock change, database migration, provider call, deployment, or restart. `7531510` remediates the production dependency advisories with Fastify 5.12.5 and patched transitive `fast-uri` releases. Node 22.23.2 / npm 10.9.8 completed clean `npm ci`, API tests (114), `npm run verify` (domain 30, AI 93, API 114, MCP PASS), `npm run eval` (8/8 scenarios, 98/98 checks), and production audit (0 vulnerabilities). Local PostgreSQL remained safely blocked by CI-only database authentication and local E2E remained blocked by the existing port-3000 listener; neither process was changed. GitHub Actions run `36871218177` passed Quality (including verify, eval, audit, and shell/operations regression), E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted inference, and other product-provider calls were all 0; only npm registry metadata/package retrieval was used for the dependency remediation.
