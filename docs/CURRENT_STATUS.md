@@ -3,7 +3,7 @@
 Last verified: **2026-10-01**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
-Verified implementation baseline: `45ef7fd9c45469f123043a6337ad8223b645a60a`
+Verified implementation baseline: `88822142b1241d5e8ef0f95ae9ebe17a1bf1e7e6`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
@@ -27,7 +27,7 @@ Verified implementation baseline: `45ef7fd9c45469f123043a6337ad8223b645a60a`
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
 | P2 — Decision Engine | IN PROGRESS | P2-DE-0 and P2-DE-1 COMPLETE; P2-DE-2 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
-| P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`; Quality/E2E/PostgreSQL SUCCESS |
+| P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -176,4 +176,4 @@ Node 22.23.2 / npm 10.9.8 completed `npm ci`, web lint/build, `npm run verify` (
 
 ## P2-DE-1 validation
 
-`45ef7fd` creates `@travel-blocks/decision-engine`, an import-side-effect-free package with strict, versioned Zod contracts for candidates, factual snapshots, DecisionRequest, selected/rejected/unresolved DecisionItem, DecisionResult, safe reason codes, provenance, and semantic validation helpers. Candidate/fact references are validated; a result must form a total, exclusive partition of all request candidates, preventing silent drops. Unknown/unavailable/invalid/untrusted facts remain facts and can produce `unresolved`; they are not coerced to false or `rejected`. The package contains no rule engine, scoring, AI Judge, provider client, prompt, raw provider/model output, public API integration, Trip/TravelBlock change, DB migration, Docker, deployment, or restart. Node 22.23.2 / npm 10.9.8 passed decision-engine tests (7), full verify (domain 30, AI 93, decision-engine 7, API 114, MCP PASS), evaluation (8/8 scenarios, 98/98 checks), and production audit (0 vulnerabilities). Local PostgreSQL was safely blocked by CI-only authentication and local E2E by the existing port-3000 listener; GitHub Actions run `36876035290` passed Quality, E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted inference, and other product-provider calls were all 0.
+`45ef7fd` creates `@travel-blocks/decision-engine`, an import-side-effect-free package with strict, versioned Zod contracts for candidates, factual snapshots, DecisionRequest, selected/rejected/unresolved DecisionItem, DecisionResult, safe reason codes, provenance, and semantic validation helpers; `8882214` reuses the existing shared TransportModeSchema rather than duplicating it. Candidate/fact references are validated; a result must form a total, exclusive partition of all request candidates, preventing silent drops. Unknown/unavailable/invalid/untrusted facts remain facts and can produce `unresolved`; they are not coerced to false or `rejected`. The package contains no rule engine, scoring, AI Judge, provider client, prompt, raw provider/model output, public API integration, Trip/TravelBlock change, DB migration, Docker, deployment, or restart. Node 22.23.2 / npm 10.9.8 passed decision-engine tests (7), full verify (domain 30, AI 93, decision-engine 7, API 114, MCP PASS), evaluation (8/8 scenarios, 98/98 checks), and production audit (0 vulnerabilities). Local PostgreSQL was safely blocked by CI-only authentication and local E2E by the existing port-3000 listener; GitHub Actions runs `36876035290` and `36877373299` passed Quality, E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted inference, and other product-provider calls were all 0.
