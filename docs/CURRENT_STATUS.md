@@ -1,6 +1,6 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-10-01**
+Last verified: **2026-10-02** (local validation; P2-DE-2 CI pending)
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
 Verified implementation baseline: `88822142b1241d5e8ef0f95ae9ebe17a1bf1e7e6`
@@ -28,6 +28,7 @@ Verified implementation baseline: `88822142b1241d5e8ef0f95ae9ebe17a1bf1e7e6`
 | P2 — Decision Engine | IN PROGRESS | P2-DE-0 and P2-DE-1 COMPLETE; P2-DE-2 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
+| P2-DE-2 — Deterministic pure decision engine | IN PROGRESS | `3a7146d`; local package/full/evaluation/PostgreSQL/audit validation PASS; CI pending |
 
 ## Current production architecture
 
@@ -134,11 +135,13 @@ P2-DE-0 COMPLETE
 
 P2-DE-1 COMPLETE
 
+P2-DE-2 IMPLEMENTATION COMPLETE — CI PENDING
+
 Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-DE-2 — Deterministic pure decision engine**
+Next after P2-DE-2 CI: **P2-FE-1 — Candidate factual enrichment**
 
 ## P1-4 verification addendum
 
@@ -177,3 +180,9 @@ Node 22.23.2 / npm 10.9.8 completed `npm ci`, web lint/build, `npm run verify` (
 ## P2-DE-1 validation
 
 `45ef7fd` creates `@travel-blocks/decision-engine`, an import-side-effect-free package with strict, versioned Zod contracts for candidates, factual snapshots, DecisionRequest, selected/rejected/unresolved DecisionItem, DecisionResult, safe reason codes, provenance, and semantic validation helpers; `8882214` reuses the existing shared TransportModeSchema rather than duplicating it. Candidate/fact references are validated; a result must form a total, exclusive partition of all request candidates, preventing silent drops. Unknown/unavailable/invalid/untrusted facts remain facts and can produce `unresolved`; they are not coerced to false or `rejected`. The package contains no rule engine, scoring, AI Judge, provider client, prompt, raw provider/model output, public API integration, Trip/TravelBlock change, DB migration, Docker, deployment, or restart. Node 22.23.2 / npm 10.9.8 passed decision-engine tests (7), full verify (domain 30, AI 93, decision-engine 7, API 114, MCP PASS), evaluation (8/8 scenarios, 98/98 checks), and production audit (0 vulnerabilities). Local PostgreSQL was safely blocked by CI-only authentication and local E2E by the existing port-3000 listener; GitHub Actions runs `36876035290` and `36877373299` passed Quality, E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted inference, and other product-provider calls were all 0.
+
+## P2-DE-2 local validation — CI pending
+
+`3a7146d` adds the pure `evaluateDecision` engine and immutable `DETERMINISTIC_POLICY_V1` (`deterministic-travel-selection`/`v1`). The policy keeps permanently closed as the only active hard rejection, requires business status, preserves unknown/unavailable/invalid/untrusted facts as unresolved, scores category fit on the documented 0–1000 integer scale, enforces an explicit minimum selection threshold and selection limit, ranks by score then candidate ID, and emits a canonical total/exclusive DecisionResult. Temporary/future opening is neither silently rejected nor selected without an operational window; it is unresolved. Opening-hours visit feasibility, budget, route, and exclusions remain deferred because V1 supplies no corresponding explicit constraints. No application/API/runtime/UI/DB/Docker change or external provider/AI call was added.
+
+Node 22.23.2 / npm 10.9.8 completed clean `npm ci`, decision-engine tests (16), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). Local E2E remains blocked by the existing port-3000 listener; it was not stopped. GitHub Actions Quality/E2E/PostgreSQL has not yet run for this implementation commit.

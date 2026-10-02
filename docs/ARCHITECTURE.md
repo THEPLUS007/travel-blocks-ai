@@ -71,9 +71,9 @@ AI execution provenance is distinct from factual provenance: Places/opening-hour
 
 Opening-hours feasibility and AI execution provenance are not current public UI contracts: the former is not connected to the runtime itinerary payload, and the latter remains observer-only. The UI therefore states that hours and actual route/travel-time data are not currently provided, rather than deriving a status.
 
-## P2 Decision Engine module — P2-DE-1 contract boundary implemented
+## P2 Decision Engine module — P2-DE-2 pure engine implemented; CI completion pending
 
-P2의 **Decision Engine**은 후보 장소를 provider-neutral하게 평가해 `selected`, `rejected`, `unresolved`를 합성하는 domain/application module입니다. 이는 Product Application, factual provider, LLM Router, UI, repository, 또는 별도 service가 아닙니다. P2-DE-1은 `packages/decision-engine`에 versioned Candidate, factual snapshot, DecisionRequest, DecisionItem, DecisionResult, safe reason/provenance Zod contracts와 cross-object validators만 구현했습니다.
+P2의 **Decision Engine**은 후보 장소를 provider-neutral하게 평가해 `selected`, `rejected`, `unresolved`를 합성하는 domain/application module입니다. 이는 Product Application, factual provider, LLM Router, UI, repository, 또는 별도 service가 아닙니다. P2-DE-1은 versioned Candidate, factual snapshot, DecisionRequest, DecisionItem, DecisionResult, safe reason/provenance Zod contracts와 cross-object validators를 구현했고, P2-DE-2는 그 계약을 입력/출력으로 하는 pure deterministic engine을 추가했습니다.
 
 ```text
 apps/web
@@ -82,8 +82,7 @@ apps/api — Product Application / orchestration
     ↓
 packages/decision-engine
     ├── provider-neutral contracts + validation (implemented)
-    ├── deterministic rules (planned)
-    ├── scoring and selection (planned)
+    ├── deterministic policy, hard rule, scoring, selection (implemented)
     ├── bounded judge port (planned)
     └── safe decision result contract (implemented)
 ```
@@ -91,6 +90,10 @@ packages/decision-engine
 목표 의존 방향은 `apps/api → packages/decision-engine → provider-neutral shared/domain contracts`입니다. Decision Engine은 `apps/api`, `apps/web`, HTTP, PostgreSQL, Gemini SDK, Google Places SDK, system clock, random에 의존하지 않습니다. composition root가 factual provider와 provider-neutral Bounded AI Judge port를 주입하며, pure rules는 `packages/ai`를 직접 호출하지 않습니다.
 
 P2-DE-1 contract package는 아직 `apps/api` 또는 `apps/web`의 production request path에서 import되지 않습니다. Candidate마다 하나의 fact snapshot reference가 필요하고 request validator는 duplicate candidate, dangling/mismatched fact reference를 거부합니다. Result validator는 입력 candidate가 selected/rejected/unresolved 중 정확히 한 상태에 모두 나타나는 total/exclusive partition을 강제하므로 silent drop이 없습니다. `unknown`/`unavailable`/`invalid`/`untrusted` fact는 unresolved를 표현할 수 있으며 rejected로 강제 변환되지 않습니다. Raw provider/model response, prompt, completion, chain-of-thought, authorization, token, secret은 strict contract에 포함되지 않습니다.
+
+P2-DE-2의 `evaluateDecision(request, policy, context)`는 caller-provided `resultId`와 `evaluatedAt`만 사용한다. default `deterministic-travel-selection`/`v1` policy는 `permanently_closed`를 priority 1 hard rejection으로 처리하고, `business_status`를 required fact로 둔다. temporary/future opening은 permanent rejection이 아니지만 reopening window가 계약에 없으므로 unresolved다. 판단 가능한 후보의 category score는 requested category match=1000, non-match=0, requested category 없음=500이며, final integer score는 `round(categoryScore × categoryMatchWeight / 1000)`이다. weight sum은 1000이고 default weight는 1000이다. `minimumSelectionScore`(default 0)를 통과한 후보를 final score descending, candidate ID ascending 순으로 rank하고 selection limit 안만 selected로 합성한다. threshold 미달은 `selection_threshold`, limit 초과는 `selection_limit`으로 rejected된다. Result decision 배열은 candidate ID ascending canonical order다.
+
+Opening-hours, budget/price, actual route duration/distance, and explicit category exclusion are deliberately not active in P2-DE-2: DecisionRequest V1 lacks a visit window, comparable budget limit, route threshold/mode constraint, and structured exclusion list. P1 domain has opening-hours and straight-line geographic helpers, but importing it is unnecessary and no adapter is added; straight-line distance is not a routed fact. P2-FE-1 or a versioned future request/policy contract must add the needed explicit inputs before those rules can be enabled.
 
 목표 runtime 순서는 candidate retrieval → factual enrichment → deterministic filtering → deterministic scoring → optional bounded AI judgment → final Decision Result → Trip planning / considered-place UI입니다. P2-DE-2는 fixture fact로 pure engine을 먼저 만들 수 있지만 실제 runtime에서 enrichment는 hard rule 및 AI Judge보다 앞섭니다. `TravelBlock`은 selected final itinerary item으로 유지하며 rejected/unresolved 후보를 저장하지 않습니다. considered-place history가 필요하면 후속 단계에서 별도 DecisionSnapshot 또는 동등 aggregate를 결정합니다.
 
