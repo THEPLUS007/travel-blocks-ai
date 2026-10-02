@@ -165,7 +165,7 @@ export const DecisionRequestSchema = z.object({
 export const DecisionReasonSchema = z.discriminatedUnion('category', [
   z.object({ category: z.literal('deterministic_rule'), code: z.enum(['candidate_selected', 'hard_constraint']) }).strict(),
   z.object({ category: z.literal('insufficient_facts'), code: z.enum(['missing_required_facts', 'fact_unavailable', 'fact_untrusted']) }).strict(),
-  z.object({ category: z.literal('selection_limit'), code: z.literal('selection_limit') }).strict(),
+  z.object({ category: z.literal('selection_limit'), code: z.enum(['selection_limit', 'selection_threshold']) }).strict(),
   z.object({ category: z.literal('ai_assisted'), code: z.enum(['ai_judge_required', 'ai_judge_unavailable']) }).strict(),
   z.object({ category: z.literal('system_policy'), code: z.literal('policy_not_executed') }).strict(),
 ]);
@@ -188,7 +188,7 @@ export const RejectedDecisionItemSchema = DecisionItemBaseSchema.extend({
   status: z.literal('rejected'),
   reason: z.union([
     z.object({ category: z.literal('deterministic_rule'), code: z.literal('hard_constraint') }).strict(),
-    z.object({ category: z.literal('selection_limit'), code: z.literal('selection_limit') }).strict(),
+    z.object({ category: z.literal('selection_limit'), code: z.enum(['selection_limit', 'selection_threshold']) }).strict(),
   ]),
 }).strict();
 export const UnresolvedDecisionItemSchema = DecisionItemBaseSchema.extend({
