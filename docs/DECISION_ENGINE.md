@@ -39,3 +39,7 @@ Every request candidate appears exactly once in the result. Each item has a safe
 ## Deferred rules
 
 The V1 request carries opening-hours, price, and route facts, but does not carry their corresponding explicit constraints. It has no candidate visit time/window, price/budget comparison limit, route duration/distance maximum with requested transport mode, or structured category exclusions. Therefore P2-DE-2 deliberately does not activate opening-hours, budget, route, or category-exclusion rules. It does not infer a timezone, make a route from coordinates, apply currency conversion, or use textual/AI category matching. Future work must version the policy/request inputs before enabling those rules.
+
+## Factual enrichment boundary
+
+P2-FE-1's `@travel-blocks/factual-enrichment` package sits before this package and supplies provider-neutral `CandidateFactSnapshot` values. It retrieves/normalizes facts but does not call `evaluateDecision`, activate rules, calculate feasibility, or create TravelBlocks. Missing factual fields remain field-level `unknown`; source failures propagate rather than becoming unknown. Its result can be used to construct a future DecisionRequest without changing DecisionRequest V1.

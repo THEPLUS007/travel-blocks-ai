@@ -246,9 +246,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-FE-1 — Candidate factual enrichment
 
-**Status: PLANNED**
+**Status: IN PROGRESS — implementation complete; CI completion pending**
 
-Add explicit factual enrichment coverage for candidates, with partial/unknown states rather than inferred facts. Runtime enrichment precedes deterministic decision and AI judgment; the pure engine may use fixture facts before this integration exists.
+`@travel-blocks/factual-enrichment` now defines provider-neutral enrichment input/output contracts and injected place/opening-hours/route ports, normalizes into P2-DE-1 fact snapshots, preserves provenance/state semantics, and has fake-provider tests. It is not wired into runtime, API, or Decision Engine execution. CI evidence is required before COMPLETE.
 
 ### P2-DE-3 — Bounded AI judge
 

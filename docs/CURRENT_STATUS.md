@@ -1,6 +1,6 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-10-02**
+Last verified: **2026-10-02** (local validation; P2-FE-1 CI pending)
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
 Verified implementation baseline: `f48ed028a36ce7d1cb04e0820515a874c4bd796c`
@@ -29,6 +29,7 @@ Verified implementation baseline: `f48ed028a36ce7d1cb04e0820515a874c4bd796c`
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
+| P2-FE-1 — Candidate factual enrichment | IN PROGRESS | `e7ea430`; local fake-provider/full/evaluation/PostgreSQL/audit validation PASS; CI pending |
 
 ## Current production architecture
 
@@ -137,11 +138,19 @@ P2-DE-1 COMPLETE
 
 P2-DE-2 COMPLETE
 
+P2-FE-1 IMPLEMENTATION COMPLETE — CI PENDING
+
 Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-FE-1 — Candidate factual enrichment**
+Next after P2-FE-1 CI: **P2-DE-3 — Bounded AI judge**
+
+## P2-FE-1 local validation — CI pending
+
+`e7ea430` adds `@travel-blocks/factual-enrichment`, an injected provider-neutral side-effect boundary that turns P2-DE-1 candidates, prior snapshots, and an explicit retrieval context into canonical `CandidateFactSnapshot[]`. It defines place, opening-hours, and route ports; structurally adapts the existing P1 opening-hours lookup; preserves current/regular schedules and quality metadata; maps successful missing fields to `unknown`; propagates provider failures unchanged; preserves no-source/context as `unavailable`; retains no raw payload; and provides deterministic timestamp/provenance merge, candidate accounting, deduplication, and bounded concurrency. Route acquisition requires explicit origin/mode and known destination; no real route provider or exact price source exists. It adds no API/runtime/UI/DB/Docker integration and does not change Decision Engine rules or DecisionRequest V1.
+
+Node 22.23.2 / npm 10.9.8 completed clean `npm ci`, factual-enrichment tests (10), decision-engine tests (16), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). Local E2E remains blocked by the existing port-3000 listener; it was not stopped. GitHub Actions Quality/E2E/PostgreSQL has not yet run for this implementation.
 
 ## P1-4 verification addendum
 
