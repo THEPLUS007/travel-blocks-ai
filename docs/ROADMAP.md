@@ -240,9 +240,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-2 — Deterministic pure decision engine
 
-**Status: IN PROGRESS — implementation complete; CI completion pending**
+**Status: COMPLETE**
 
-`@travel-blocks/decision-engine` now has an explicit immutable `deterministic-travel-selection`/`v1` policy, injected evaluation context, pure hard-rule/required-fact/scoring/ranking/selection composition, and deterministic tests. It has no AI, provider, HTTP, DB, clock, environment, or runtime integration. CI Quality/E2E/PostgreSQL evidence is required before this phase is marked COMPLETE.
+`@travel-blocks/decision-engine` has an explicit immutable `deterministic-travel-selection`/`v1` policy, injected evaluation context, pure hard-rule/required-fact/scoring/ranking/selection composition, and deterministic tests. It has no AI, provider, HTTP, DB, clock, environment, or runtime integration. `3a7146d` and `f48ed02` passed GitHub Actions Quality/E2E/PostgreSQL in run `36976995196`.
 
 ### P2-FE-1 — Candidate factual enrichment
 

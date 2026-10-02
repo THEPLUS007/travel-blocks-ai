@@ -71,7 +71,7 @@ AI execution provenance is distinct from factual provenance: Places/opening-hour
 
 Opening-hours feasibility and AI execution provenance are not current public UI contracts: the former is not connected to the runtime itinerary payload, and the latter remains observer-only. The UI therefore states that hours and actual route/travel-time data are not currently provided, rather than deriving a status.
 
-## P2 Decision Engine module — P2-DE-2 pure engine implemented; CI completion pending
+## P2 Decision Engine module — P2-DE-2 pure engine implemented
 
 P2의 **Decision Engine**은 후보 장소를 provider-neutral하게 평가해 `selected`, `rejected`, `unresolved`를 합성하는 domain/application module입니다. 이는 Product Application, factual provider, LLM Router, UI, repository, 또는 별도 service가 아닙니다. P2-DE-1은 versioned Candidate, factual snapshot, DecisionRequest, DecisionItem, DecisionResult, safe reason/provenance Zod contracts와 cross-object validators를 구현했고, P2-DE-2는 그 계약을 입력/출력으로 하는 pure deterministic engine을 추가했습니다.
 
