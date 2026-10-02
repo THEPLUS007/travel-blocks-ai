@@ -246,9 +246,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-FE-1 — Candidate factual enrichment
 
-**Status: IN PROGRESS — implementation complete; CI completion pending**
+**Status: COMPLETE**
 
-`@travel-blocks/factual-enrichment` now defines provider-neutral enrichment input/output contracts and injected place/opening-hours/route ports, normalizes into P2-DE-1 fact snapshots, preserves provenance/state semantics, and has fake-provider tests. It is not wired into runtime, API, or Decision Engine execution. CI evidence is required before COMPLETE.
+`@travel-blocks/factual-enrichment` defines provider-neutral enrichment input/output contracts and injected place/opening-hours/route ports, normalizes into P2-DE-1 fact snapshots, preserves provenance/state semantics, and has fake-provider tests. It is not wired into runtime, API, or Decision Engine execution. `e7ea430` and `5b2aad2` passed GitHub Actions Quality/E2E/PostgreSQL in run `36981848388`.
 
 ### P2-DE-3 — Bounded AI judge
 

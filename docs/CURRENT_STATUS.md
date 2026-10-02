@@ -1,9 +1,9 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-10-02** (local validation; P2-FE-1 CI pending)
+Last verified: **2026-10-02**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
-Verified implementation baseline: `f48ed028a36ce7d1cb04e0820515a874c4bd796c`
+Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
@@ -25,11 +25,11 @@ Verified implementation baseline: `f48ed028a36ce7d1cb04e0820515a874c4bd796c`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
-| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-2 COMPLETE; P2-FE-1 is next |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-FE-1 COMPLETE; P2-DE-3 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
-| P2-FE-1 — Candidate factual enrichment | IN PROGRESS | `e7ea430`; local fake-provider/full/evaluation/PostgreSQL/audit validation PASS; CI pending |
+| P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -138,19 +138,19 @@ P2-DE-1 COMPLETE
 
 P2-DE-2 COMPLETE
 
-P2-FE-1 IMPLEMENTATION COMPLETE — CI PENDING
+P2-FE-1 COMPLETE
 
 Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next after P2-FE-1 CI: **P2-DE-3 — Bounded AI judge**
+Next: **P2-DE-3 — Bounded AI judge**
 
-## P2-FE-1 local validation — CI pending
+## P2-FE-1 validation
 
 `e7ea430` adds `@travel-blocks/factual-enrichment`, an injected provider-neutral side-effect boundary that turns P2-DE-1 candidates, prior snapshots, and an explicit retrieval context into canonical `CandidateFactSnapshot[]`. It defines place, opening-hours, and route ports; structurally adapts the existing P1 opening-hours lookup; preserves current/regular schedules and quality metadata; maps successful missing fields to `unknown`; propagates provider failures unchanged; preserves no-source/context as `unavailable`; retains no raw payload; and provides deterministic timestamp/provenance merge, candidate accounting, deduplication, and bounded concurrency. Route acquisition requires explicit origin/mode and known destination; no real route provider or exact price source exists. It adds no API/runtime/UI/DB/Docker integration and does not change Decision Engine rules or DecisionRequest V1.
 
-Node 22.23.2 / npm 10.9.8 completed clean `npm ci`, factual-enrichment tests (10), decision-engine tests (16), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). Local E2E remains blocked by the existing port-3000 listener; it was not stopped. GitHub Actions Quality/E2E/PostgreSQL has not yet run for this implementation.
+Node 22.23.2 / npm 10.9.8 completed clean `npm ci`, factual-enrichment tests (10), decision-engine tests (16), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). Local E2E remained blocked by the existing port-3000 listener; it was not stopped. GitHub Actions run `36981848388` passed Quality, E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted inference, and other product-provider calls were all 0.
 
 ## P1-4 verification addendum
 

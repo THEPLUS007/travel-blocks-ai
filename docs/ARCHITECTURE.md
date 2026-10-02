@@ -95,7 +95,7 @@ P2-DE-2의 `evaluateDecision(request, policy, context)`는 caller-provided `resu
 
 Opening-hours, budget/price, actual route duration/distance, and explicit category exclusion are deliberately not active in P2-DE-2: DecisionRequest V1 lacks a visit window, comparable budget limit, route threshold/mode constraint, and structured exclusion list. P1 domain has opening-hours and straight-line geographic helpers, but importing it is unnecessary and no adapter is added; straight-line distance is not a routed fact. P2-FE-1 or a versioned future request/policy contract must add the needed explicit inputs before those rules can be enabled.
 
-## P2 Candidate Factual Enrichment — implemented; CI completion pending
+## P2 Candidate Factual Enrichment — implemented
 
 `packages/factual-enrichment` is the side-effect boundary before the pure Decision Engine. Its `enrichCandidateFacts(request, sources, options)` accepts candidate references, prior snapshots, an explicit retrieval context, and injected provider-neutral place/opening-hours/route ports; it returns canonical `CandidateFactSnapshot[]` backed by the existing P2-DE-1 schema. It has no Google SDK, HTTP client, configuration, Fastify, database, AI, retry, fallback, or decision logic. `createOpeningHoursFactSource` structurally adapts P1's `PlaceOpeningHoursProvider` lookup without introducing an `apps/api` dependency.
 
