@@ -81,6 +81,7 @@ export interface ApiConfig {
   selfHostedLlmApiToken?: string;
   selfHostedLlmTimeoutMs: number;
   selfHostedLlmReadiness: 'healthy' | 'unhealthy' | 'unknown';
+  decisionAiJudgeEnabled: boolean;
   dbMaxConnections: number;
   dbConnectionTimeoutMs: number;
   dbIdleTimeoutMs: number;
@@ -134,6 +135,7 @@ export function loadApiConfig(): ApiConfig {
     selfHostedLlmApiToken: process.env.SELF_HOSTED_LLM_API_TOKEN || undefined,
     selfHostedLlmTimeoutMs: integer('SELF_HOSTED_LLM_TIMEOUT_MS', 15_000, 1000, 120_000),
     selfHostedLlmReadiness,
+    decisionAiJudgeEnabled: boolean('DECISION_AI_JUDGE_ENABLED', false),
     dbMaxConnections: integer('DB_MAX_CONNECTIONS', 10, 1, 50),
     dbConnectionTimeoutMs: integer('DB_CONNECTION_TIMEOUT_MS', 5000, 100, 60_000),
     dbIdleTimeoutMs: integer('DB_IDLE_TIMEOUT_MS', 30_000, 1000, 600_000),

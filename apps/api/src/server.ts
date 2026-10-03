@@ -100,6 +100,8 @@ try {
     readiness: () => checkDatabase(pool),
     logger: true,
     trustProxy: config.trustProxy,
+    decisionJudgeEnabled: config.decisionAiJudgeEnabled,
+    decisionJudgeProviderEligible: Boolean(config.geminiApiKey),
   });
   await app.listen({ host: config.host, port: config.port });
   console.info(`[Server] ready port=${config.port} database=connected ai=${config.geminiApiKey ? 'configured' : 'unavailable'} places=${config.googlePlacesApiKey ? 'google' : 'unavailable'}`);

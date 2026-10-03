@@ -13,7 +13,7 @@ import {
   RecommendationRequestSchema,
   UpdateTripRequestSchema,
 } from '@travel-blocks/shared';
-import { AiProviderError, type TravelAiProvider } from '@travel-blocks/ai';
+import { AiProviderError, createRankPlacesBoundedJudgePort, type BoundedRankPlacesProvider, type TravelAiProvider } from '@travel-blocks/ai';
 import { assertValidItinerary, ItineraryValidationError } from '@travel-blocks/domain';
 import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
@@ -21,6 +21,7 @@ import { buildTripPlanningInput, groundPlanWithCandidates, retrieveIntentCandida
 import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from './recommendations.js';
 import { SourcePipelineError, TravelSourcePipeline } from './sources.js';
 import type { TripRepository } from './repository.js';
+import { DecisionApplicationError, DecisionApplicationServiceV1, DecisionApiRequestV1Schema, decisionApiError, type DecisionApplicationServiceOptions } from './decisions.js';
 
 export interface AppDependencies {
   repository: TripRepository;
@@ -31,6 +32,9 @@ export interface AppDependencies {
   readiness?: () => Promise<void>;
   logger?: boolean;
   trustProxy?: boolean;
+  decisionService?: DecisionApplicationServiceV1;
+  decisionJudgeEnabled?: boolean;
+  decisionJudgeProviderEligible?: boolean;
 }
 
 const idSchema = z.string().uuid();
@@ -50,6 +54,35 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
 
   const fail = (reply: any, request: any, code: string, message: string, retryable = false, status = errorStatus(code)) =>
     reply.code(status).send({ error: { code, message, retryable, requestId: request.id } });
+
+  const decisionNow = () => new Date();
+  const decisionOptions: DecisionApplicationServiceOptions = {
+    candidateResolver: { resolve: async (reference) => {
+      const place = await deps.places.getPlace(reference.sourceRecordId);
+      return place ? { provider: place.provider, providerPlaceId: place.providerPlaceId, displayName: place.name, formattedAddress: place.formattedAddress, category: place.category } : null;
+    } },
+    factualSources: {
+      place: { getPlaceFacts: async (reference) => {
+        const place = await deps.places.getPlace(reference.sourceRecordId);
+        if (!place) return null;
+        const retrievedAt = decisionNow().toISOString();
+        return { provenance: { sourceSystem: place.provider, sourceRecordId: place.providerPlaceId, sourceKind: 'factual_provider' as const, retrievedAt }, retrievedAt, coordinates: { latitude: place.latitude, longitude: place.longitude } };
+      } },
+      ...('getOpeningHours' in deps.places && typeof (deps.places as { getOpeningHours?: unknown }).getOpeningHours === 'function'
+        ? { openingHours: { getOpeningHours: (reference: { sourceRecordId: string }) => (deps.places as unknown as { getOpeningHours(placeId: string): Promise<any> }).getOpeningHours(reference.sourceRecordId) } }
+        : {}),
+    },
+    judgePort: createRankPlacesBoundedJudgePort({ rankBoundedPlaces: (input) => {
+      const provider = deps.ai as TravelAiProvider & Partial<BoundedRankPlacesProvider>;
+      if (!provider.rankBoundedPlaces) throw new AiProviderError('bad_request', false);
+      return provider.rankBoundedPlaces(input);
+    } }),
+    judgeEnabled: deps.decisionJudgeEnabled ?? false,
+    judgeProviderEligible: deps.decisionJudgeProviderEligible ?? false,
+    createId: randomUUID,
+    now: decisionNow,
+  };
+  const decisionService = deps.decisionService ?? new DecisionApplicationServiceV1(decisionOptions);
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) return fail(reply, request, 'INVALID_REQUEST', '요청 형식이 올바르지 않습니다.');
@@ -136,6 +169,18 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     if (candidates.length === 0) return [];
     const ranking = await deps.ai.rankPlaces(buildPlaceRankingInput(input, candidates));
     return selectedPlacesToBlocks(candidates, ranking);
+  });
+  app.post('/api/v1/decisions/evaluate', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
+    try {
+      return await decisionService.evaluate(DecisionApiRequestV1Schema.parse(request.body), request.id);
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send(decisionApiError(request.id, 'INVALID_DECISION_REQUEST', false));
+      if (error instanceof DecisionApplicationError) {
+        const status = error.code === 'AI_DEPENDENCY_TIMEOUT' ? 504 : error.code === 'AI_DEPENDENCY_UNAVAILABLE' ? 503 : error.code === 'FACTUAL_DEPENDENCY_FAILURE' ? 503 : error.code === 'AI_INVALID_OUTPUT' ? 502 : 500;
+        return reply.code(status).send(decisionApiError(request.id, error.code, error.retryable));
+      }
+      return reply.code(500).send(decisionApiError(request.id, 'DECISION_INVARIANT_FAILURE', false));
+    }
   });
   app.get('/api/v1/places/search', async (request) => deps.places.search(PlaceSearchInputSchema.parse(request.query)));
   app.get('/api/v1/places/:placeId', async (request, reply) =>
