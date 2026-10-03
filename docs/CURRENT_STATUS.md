@@ -30,7 +30,7 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
 | P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
-| P2-DE-3 — Bounded AI judge | COMPLETE | local contract/package implementation; API/runtime wiring deferred to P2-DE-4 |
+| P2-DE-3 — Bounded AI judge | COMPLETE | `02f0e34`, `f4d53ac`; GitHub Actions `37104429361` Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -152,6 +152,8 @@ Next: **P2-DE-4 — Versioned Decision API integration**
 `@travel-blocks/decision-judge` now contains strict V1 bounded-judge contracts, immutable policy (2–5 candidates), pure eligibility/request creation, full-permutation validation, provider-neutral port execution, safe observer isolation, and deterministic reconciliation into the existing DecisionResult. It operates only after factual enrichment and P2-DE-2 evaluation: hard rejections, unresolved candidates, facts/provenance, scores, and all outside-allowlist decisions remain unchanged. Pre-execution skips are typed; started port errors and malformed output propagate with no retry, fallback, failover, or partial apply. `ai_assisted_selection`/`ai_assisted_not_selected` are safe enumerable reason codes only.
 
 The current shared `rank_places` contract returns a partial selection and free reasons, so it cannot represent the required exact ranking permutation. P2-DE-3 keeps its Gemini-only default routing and existing router table unchanged; `packages/ai` exposes only a future composition seam plus an untrusted-data prompt builder. There is no public API, DB migration, production runtime, Docker, deployment, or actual Gemini/Places/Routes/self-hosted/Groq/NVIDIA/OpenRouter call. P2-DE-4 owns composition/API integration; P2-DE-5 owns considered/rejected UI; P2-DE-6 owns snapshots/evaluation.
+
+Node 22.23.2 / npm 10.9.8 completed `npm ci`, decision-engine tests (16), factual-enrichment tests (10), decision-judge tests (7), AI tests (95), API tests (114), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). GitHub Actions run `37104429361` passed Quality, E2E, and PostgreSQL. No local process on port 3000 was stopped or restarted; no live provider calls occurred.
 
 ## P2-FE-1 validation
 
