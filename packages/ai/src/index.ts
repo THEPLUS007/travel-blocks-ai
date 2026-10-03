@@ -25,6 +25,8 @@ export type { BenchmarkFailureCategory, IntentBenchmarkGate, IntentBenchmarkRun,
 export type { IntentBenchmarkExpectation, IntentBenchmarkFixture } from './intentBenchmarkFixtures.js';
 export { BOUNDED_DECISION_FIXTURES } from './boundedDecisionFixtures.js';
 export type { BoundedDecisionFixture } from './boundedDecisionFixtures.js';
+export { BOUNDED_JUDGE_AI_CAPABILITY, BOUNDED_JUDGE_AI_TASK, buildBoundedJudgePrompt, createRankPlacesBoundedJudgePort } from './boundedJudge.js';
+export type { RankPlacesBoundedJudgeExecutor } from './boundedJudge.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
