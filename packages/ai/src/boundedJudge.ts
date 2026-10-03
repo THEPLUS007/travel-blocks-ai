@@ -7,14 +7,19 @@ import { wrapUntrustedUserData, type TaskPrompt } from './prompts/common.js';
  * PlaceRankingInput/Result contracts express partial selections, not a full ordering.
  */
 export interface RankPlacesBoundedJudgeExecutor {
-  rankPlaces(request: BoundedJudgeRequestV1): Promise<unknown>;
+  rankBoundedPlaces(request: BoundedJudgeRequestV1): Promise<unknown>;
+}
+
+/** A versioned full-ranking operation; legacy rankPlaces remains unchanged. */
+export interface BoundedRankPlacesProvider {
+  rankBoundedPlaces(request: BoundedJudgeRequestV1): Promise<unknown>;
 }
 
 export const BOUNDED_JUDGE_AI_TASK = 'rank_places' as const;
 export const BOUNDED_JUDGE_AI_CAPABILITY = 'place_ranking' as const;
 
 export function createRankPlacesBoundedJudgePort(executor: RankPlacesBoundedJudgeExecutor): BoundedJudgePort {
-  return { rank: (request) => executor.rankPlaces(request) };
+  return { rank: (request) => executor.rankBoundedPlaces(request) };
 }
 
 /** Provider-neutral prompt payload for a future rank_places structured-output adapter. */

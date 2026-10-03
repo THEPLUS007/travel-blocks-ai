@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BOUNDED_JUDGE_AI_CAPABILITY, BOUNDED_JUDGE_AI_TASK, buildBoundedJudgePrompt, createRankPlacesBoundedJudgePort } from '../src/index.js';
+import { BOUNDED_JUDGE_AI_CAPABILITY, BOUNDED_JUDGE_AI_TASK, GeminiTravelAiProvider, buildBoundedJudgePrompt, createRankPlacesBoundedJudgePort } from '../src/index.js';
 
 const request = {
   contractVersion: 'bounded_judge_request_v1' as const,
@@ -25,11 +25,21 @@ describe('P2-DE-3 AI adapter boundary', () => {
   });
 
   it('is a one-call composition seam for the existing rank_places capability, with no fallback', async () => {
-    const rankPlaces = vi.fn(async () => ({ rankings: [] }));
-    const port = createRankPlacesBoundedJudgePort({ rankPlaces });
+    const rankBoundedPlaces = vi.fn(async () => ({ rankings: [] }));
+    const port = createRankPlacesBoundedJudgePort({ rankBoundedPlaces });
     await expect(port.rank(request)).resolves.toEqual({ rankings: [] });
-    expect(rankPlaces).toHaveBeenCalledOnce();
+    expect(rankBoundedPlaces).toHaveBeenCalledOnce();
     expect(BOUNDED_JUDGE_AI_TASK).toBe('rank_places');
     expect(BOUNDED_JUDGE_AI_CAPABILITY).toBe('place_ranking');
+  });
+
+  it('uses the same rank_places capability with a strict full-ranking V1 schema while preserving legacy ranking', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ contractVersion: 'bounded_judge_result_v1', judgeRequestId: 'judge-1', rankings: [{ candidateId: 'candidate-a', rank: 1, reasonCode: 'preference_fit' }, { candidateId: 'candidate-b', rank: 2, reasonCode: 'tie_break' }] }) }] } }] }), { status: 200 }));
+    const provider = new GeminiTravelAiProvider({ apiKey: 'test', fetch });
+    await expect(provider.rankBoundedPlaces(request)).resolves.toMatchObject({ rankings: [{ candidateId: 'candidate-a', rank: 1 }, { candidateId: 'candidate-b', rank: 2 }] });
+    expect(fetch).toHaveBeenCalledOnce();
+    const body = JSON.parse(String(fetch.mock.calls[0][1]?.body));
+    expect(body.generationConfig.responseJsonSchema.properties.rankings).toBeDefined();
+    expect(body.systemInstruction.parts[0].text).not.toContain('candidate-X');
   });
 });

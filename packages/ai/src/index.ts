@@ -7,6 +7,7 @@ import type {
   TripPlanningInput,
   TravelPlanDraft,
 } from '@travel-blocks/shared';
+import { BoundedJudgeRequestV1Schema, BoundedJudgeResultV1Schema, type BoundedJudgeRequestV1 } from '@travel-blocks/decision-judge';
 import { ZodError, type ZodType } from 'zod';
 import { AI_TASK_DEFINITIONS, type AiTask, type AiTimeoutClass } from './tasks.js';
 export { AI_TASK_DEFINITIONS } from './tasks.js';
@@ -26,13 +27,14 @@ export type { IntentBenchmarkExpectation, IntentBenchmarkFixture } from './inten
 export { BOUNDED_DECISION_FIXTURES } from './boundedDecisionFixtures.js';
 export type { BoundedDecisionFixture } from './boundedDecisionFixtures.js';
 export { BOUNDED_JUDGE_AI_CAPABILITY, BOUNDED_JUDGE_AI_TASK, buildBoundedJudgePrompt, createRankPlacesBoundedJudgePort } from './boundedJudge.js';
-export type { RankPlacesBoundedJudgeExecutor } from './boundedJudge.js';
+export type { BoundedRankPlacesProvider, RankPlacesBoundedJudgeExecutor } from './boundedJudge.js';
 import { toGeminiResponseJsonSchema } from './gemini/structuredOutput.js';
 import { buildAnalyzeTravelContentPrompt } from './prompts/analyzeTravelContent.js';
 import type { TaskPrompt } from './prompts/common.js';
 import { buildExtractIntentPrompt } from './prompts/extractIntent.js';
 import { buildGenerateTripPrompt } from './prompts/generateTrip.js';
 import { buildRankPlacesPrompt } from './prompts/rankPlaces.js';
+import { buildBoundedJudgePrompt, type BoundedRankPlacesProvider } from './boundedJudge.js';
 
 export interface TravelAiProvider {
   extractIntent(input: GenerateTripInput): Promise<TravelIntent>;
@@ -137,7 +139,7 @@ function normalizeAnalyzeTextOutput(output: unknown): unknown {
   }) };
 }
 
-export class GeminiTravelAiProvider implements TravelAiProvider {
+export class GeminiTravelAiProvider implements TravelAiProvider, BoundedRankPlacesProvider {
   private readonly model: string;
   private readonly intentModel: string;
   private readonly timeoutMs: number;
@@ -198,6 +200,11 @@ export class GeminiTravelAiProvider implements TravelAiProvider {
       });
     });
     return this.request<PlaceRankingResult>('rank_places', buildRankPlacesPrompt(parsed), rankingSchema, this.model);
+  }
+
+  rankBoundedPlaces(input: BoundedJudgeRequestV1): Promise<unknown> {
+    const parsed = BoundedJudgeRequestV1Schema.parse(input);
+    return this.request('rank_places', buildBoundedJudgePrompt(parsed), BoundedJudgeResultV1Schema, this.model);
   }
 
   private async slot<T>(operation: () => Promise<T>): Promise<T> {

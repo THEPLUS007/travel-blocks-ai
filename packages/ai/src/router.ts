@@ -7,7 +7,9 @@ import type {
   TripPlanningInput,
   TravelPlanDraft,
 } from '@travel-blocks/shared';
+import type { BoundedJudgeRequestV1 } from '@travel-blocks/decision-judge';
 import { AiProviderError, type TravelAiProvider } from './index.js';
+import type { BoundedRankPlacesProvider } from './boundedJudge.js';
 import { AiRoutingPolicy, type AiRoutingDecision } from './routingPolicy.js';
 import { DefaultAiExecutionScopeFactory, resolveAiExecutionScope, type AiExecutionObserver, type AiExecutionScopeFactory, type AiProvenanceFailureCategory } from './execution.js';
 import { AI_TASK_DEFINITIONS, type AiCapability, type AiTask } from './tasks.js';
@@ -162,5 +164,13 @@ export class AiTaskRouter implements TravelAiProvider {
 
   rankPlaces(input: PlaceRankingInput): Promise<PlaceRankingResult> {
     return this.execute('rank_places', (provider) => provider.rankPlaces(input));
+  }
+
+  rankBoundedPlaces(input: BoundedJudgeRequestV1): Promise<unknown> {
+    return this.execute('rank_places', (provider) => {
+      const bounded = provider as TravelAiProvider & Partial<BoundedRankPlacesProvider>;
+      if (!bounded.rankBoundedPlaces) throw new AiProviderError('bad_request', false);
+      return bounded.rankBoundedPlaces(input);
+    });
   }
 }
