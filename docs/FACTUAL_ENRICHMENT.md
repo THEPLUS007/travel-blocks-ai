@@ -36,3 +36,7 @@ Known never yields to unknown. A newer known value wins; same timestamp plus dif
 ## Contract gaps and deferred facts
 
 DecisionRequest V1 still has no visit window, budget/currency maximum, route threshold, matching route transport constraint, or structured category exclusion. Enrichment does not invent any of them. It also does not activate opening-hours, budget, or route Decision Engine rules. There is no actual route provider or exact price source today; P2-FE-1 only defines their provider-neutral acquisition ports and tests them with fakes.
+
+## P2-DE-3 handoff
+
+P2-DE-3 consumes only the normalized `CandidateFactSnapshot` values after deterministic evaluation. `@travel-blocks/decision-judge` does not enrich, reinterpret, mutate, or overwrite factual values or factual provenance; unavailable, invalid, untrusted, and unresolved required facts remain outside its bounded allowlist. This is package-only work: enrichment and the judge are not connected to the production API/runtime yet.

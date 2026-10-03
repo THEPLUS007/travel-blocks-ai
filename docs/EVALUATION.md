@@ -67,3 +67,7 @@ Provider failure fixtures are kept outside the evaluation dataset and never call
 ## P1-5F local intent bake-off
 
 P1-5F adds a provider-neutral deterministic local-model benchmark layer, distinct from this itinerary baseline. Its 34 synthetic intent fixtures and gate unit tests never call a provider. The explicit live runner is separate, loopback-only, sequential, authenticated, and writes only safe aggregate metrics outside Git. On 2026-09-23, the isolated ARM 2-vCPU run rejected Candidate A for incomplete community conversion provenance; official Qwen3-4B Q4_K_M and Gemma 4 E2B Q4_0 each exceeded the 30-second first-fixture hard deadline and were stopped. No local model is eligible for staging, and the production matrix remains Gemini for all four tasks. See `P1-5F_LOCAL_MODEL_BAKEOFF.md`.
+
+## P2-DE-3 bounded-judge fixtures
+
+`@travel-blocks/decision-judge` uses deterministic facts and fake ports only. Its regression suite covers policy skips, candidate bounding/tie order, exact-permutation validation, malformed output failure propagation, observer isolation, frozen-input purity, and reconciliation preservation of permanent closure, unresolved decisions, facts, provenance, deterministic scores, selection limit, and total/exclusive partition. The AI prompt-contract fixture places an injection string in a label/preference and verifies it stays inside `<user_data>`. These are contract tests, not live quality scoring; no provider is called.

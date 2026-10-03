@@ -252,9 +252,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-3 — Bounded AI judge
 
-**Status: PLANNED**
+**Status: COMPLETE**
 
-Add a strictly bounded AI judgment input/output behind the existing routing boundary after enrichment and hard-rule filtering. It cannot replace provider facts, override deterministic hard decisions, or own the final result.
+`@travel-blocks/decision-judge` supplies versioned strict request/result/policy contracts, immutable eligibility/bounding, a provider-neutral port, and pure reconciliation. It only accepts a full permutation of a maximum-five deterministic survivor allowlist; it cannot replace provider facts, override hard/unresolved decisions, change scores, or own DecisionResult. The existing partial `rank_places` schema is documented as incompatible with this full-ranking contract, so a composition-only adapter seam is present while API/production runtime wiring remains deferred to P2-DE-4. Fixture tests make no provider calls.
 
 ### P2-DE-4 — Versioned Decision API integration
 

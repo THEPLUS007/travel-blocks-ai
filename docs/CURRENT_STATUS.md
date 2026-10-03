@@ -1,6 +1,6 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-10-02**
+Last verified: **2026-10-03**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
 Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
@@ -25,11 +25,12 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
-| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-FE-1 COMPLETE; P2-DE-3 is next |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-3 COMPLETE; P2-DE-4 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
 | P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
+| P2-DE-3 — Bounded AI judge | COMPLETE | local contract/package implementation; API/runtime wiring deferred to P2-DE-4 |
 
 ## Current production architecture
 
@@ -144,7 +145,13 @@ Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-DE-3 — Bounded AI judge**
+Next: **P2-DE-4 — Versioned Decision API integration**
+
+## P2-DE-3 implementation status
+
+`@travel-blocks/decision-judge` now contains strict V1 bounded-judge contracts, immutable policy (2–5 candidates), pure eligibility/request creation, full-permutation validation, provider-neutral port execution, safe observer isolation, and deterministic reconciliation into the existing DecisionResult. It operates only after factual enrichment and P2-DE-2 evaluation: hard rejections, unresolved candidates, facts/provenance, scores, and all outside-allowlist decisions remain unchanged. Pre-execution skips are typed; started port errors and malformed output propagate with no retry, fallback, failover, or partial apply. `ai_assisted_selection`/`ai_assisted_not_selected` are safe enumerable reason codes only.
+
+The current shared `rank_places` contract returns a partial selection and free reasons, so it cannot represent the required exact ranking permutation. P2-DE-3 keeps its Gemini-only default routing and existing router table unchanged; `packages/ai` exposes only a future composition seam plus an untrusted-data prompt builder. There is no public API, DB migration, production runtime, Docker, deployment, or actual Gemini/Places/Routes/self-hosted/Groq/NVIDIA/OpenRouter call. P2-DE-4 owns composition/API integration; P2-DE-5 owns considered/rejected UI; P2-DE-6 owns snapshots/evaluation.
 
 ## P2-FE-1 validation
 

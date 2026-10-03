@@ -77,3 +77,5 @@
 27. **Deterministic Decision Engine은 명시적으로 주입된 request, policy, evaluation context만으로 판단합니다.** hard rejection은 required-fact insufficiency보다 우선하고, insufficiency는 scoring/selection보다 우선합니다. 현재 시각, 환경 변수, 난수, network, DB, raw provider/model payload를 사용하지 않으며 모든 입력 candidate는 정확히 하나의 safe decision 상태로 보존합니다.
 
 28. **Factual enrichment는 fact retrieval·normalization만 소유합니다.** provider failure를 unknown으로 숨기거나 retry/fallback하지 않으며, feasibility·score·selected/rejected 판단을 수행하지 않습니다. 사실 source, provenance, retrieval time, known/unknown/unavailable/invalid/untrusted 상태는 Decision Engine에 전달되기 전에 보존합니다.
+
+29. **Bounded AI judge는 hard filtering 후 immutable allowlist의 상대 순서만 제공할 수 있습니다.** hard rejection, unresolved, required-fact 상태, deterministic score, provider fact/provenance, allowlist 밖 후보와 최종 DecisionResult 소유권은 AI가 변경할 수 없으며 reconciliation은 strict permutation validation 뒤 순수하게 수행합니다.

@@ -57,6 +57,10 @@ The Gemini adapter consumes the immutable `AI_TASK_DEFINITIONS` map in `packages
 
 Gemini selection caused by an ineligible self-hosted provider happens before execution and is not fallback. Once self-hosted is selected, its error propagates unchanged; Gemini is not called. There is no post-execution fallback, failover, parallel/shadow traffic, circuit breaker, cost/latency/quality routing, new capability, public API change, DB migration, or live inference call. P1-5F is complete: the isolated bake-off found no local model eligible for staging; production routing remains Gemini-only.
 
+## P2-DE-3 bounded judge boundary
+
+`rank_places` remains Gemini-only and its production routing definition is unchanged. Its current partial-selection schema is not a full-ranking contract, so P2-DE-3 does not route live judge traffic or alter Gemini structured output. `packages/ai` has only a composition seam marked as `rank_places`/`place_ranking` plus a prompt builder that treats bounded candidates and preferences as untrusted data. It forbids new facts/IDs, itinerary generation, hard-decision changes, embedded-instruction execution, and chain-of-thought. A future P2-DE-4 adapter must retain the existing Router execution scope/provenance and provider-owned retry policy; P2-DE-3 tests use fake ports and make zero provider calls.
+
 ## P1-5E execution scope and provenance
 
 `AiTaskRouter` is the execution-scope boundary. It creates an immutable scope per logical task with a generated execution ID, task, required capability, start time, selected provider, task-aware model identifier, routing mode/reason, and routing decision. ID and clock are injectable in tests. The Router makes the routing decision once; the routing observer event and terminal provenance share that execution ID. Concrete adapters expose only task-aware model IDs: Gemini reports its intent model for `extract_intent` and default model otherwise; self-hosted reports its configured model. Unknown metadata remains explicit as `unknown` rather than invented.

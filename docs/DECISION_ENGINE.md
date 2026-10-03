@@ -43,3 +43,7 @@ The V1 request carries opening-hours, price, and route facts, but does not carry
 ## Factual enrichment boundary
 
 P2-FE-1's `@travel-blocks/factual-enrichment` package sits before this package and supplies provider-neutral `CandidateFactSnapshot` values. It retrieves/normalizes facts but does not call `evaluateDecision`, activate rules, calculate feasibility, or create TravelBlocks. Missing factual fields remain field-level `unknown`; source failures propagate rather than becoming unknown. Its result can be used to construct a future DecisionRequest without changing DecisionRequest V1.
+
+## Bounded AI judge (P2-DE-3)
+
+The deterministic engine remains final owner of DecisionResult. `@travel-blocks/decision-judge` consumes an already validated deterministic result through a provider-neutral port. It considers only deterministic selections and `selection_limit` rejections whose required facts are known; permanently closed/hard-rejected, threshold-rejected, and unresolved candidates cannot enter the allowlist. The V1 policy bounds this set to 2–5 candidates by score descending/candidate ID ascending. A strict, complete ranking permutation is reconciled with the existing result and selection limit; all protected decisions and facts remain unchanged. Skips are typed and retain the deterministic result; started execution failures propagate without retry, fallback, or partial application. No API or production runtime calls this package yet.

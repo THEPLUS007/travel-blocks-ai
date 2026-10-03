@@ -26,6 +26,10 @@ Public RecommendationRequest
 
 Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 factual 장소 데이터를 생성하지 않으며 candidate ID와 추천 이유만 반환합니다.
 
+## P2-DE-3 bounded judge — implemented package, not runtime
+
+`@travel-blocks/decision-judge` is an internal, provider-neutral contract and reconciliation package. The intended pipeline is `factual enrichment → @travel-blocks/decision-engine deterministic evaluation → @travel-blocks/decision-judge → DecisionResult`; API composition has not been added. The judge only orders a policy-bounded subset of hard-rule survivors. Strict validation requires an exact candidate-ID permutation, then pure reconciliation changes only that subset while preserving hard rejections, unresolved items, facts, evidence, deterministic scores, and all outside decisions. Gemini/router/default production traffic remains untouched.
+
 ## Structured AI output
 
 ```text
