@@ -79,3 +79,5 @@
 28. **Factual enrichment는 fact retrieval·normalization만 소유합니다.** provider failure를 unknown으로 숨기거나 retry/fallback하지 않으며, feasibility·score·selected/rejected 판단을 수행하지 않습니다. 사실 source, provenance, retrieval time, known/unknown/unavailable/invalid/untrusted 상태는 Decision Engine에 전달되기 전에 보존합니다.
 
 29. **Bounded AI judge는 hard filtering 후 immutable allowlist의 상대 순서만 제공할 수 있습니다.** hard rejection, unresolved, required-fact 상태, deterministic score, provider fact/provenance, allowlist 밖 후보와 최종 DecisionResult 소유권은 AI가 변경할 수 없으며 reconciliation은 strict permutation validation 뒤 순수하게 수행합니다.
+
+30. **Decision API는 public input을 authoritative fact나 decision으로 승격하지 않습니다.** V1 caller는 provider reference와 normalized preference만 제출하며 server가 candidate/fact provenance, IDs, timestamps, policy와 result를 소유합니다. API는 safe result/coverage/skip metadata만 노출하고 raw AI/provider payload나 AI provenance를 노출하지 않습니다.

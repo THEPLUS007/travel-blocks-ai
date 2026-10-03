@@ -40,3 +40,5 @@ DecisionRequest V1 still has no visit window, budget/currency maximum, route thr
 ## P2-DE-3 handoff
 
 P2-DE-3 consumes only the normalized `CandidateFactSnapshot` values after deterministic evaluation. `@travel-blocks/decision-judge` does not enrich, reinterpret, mutate, or overwrite factual values or factual provenance; unavailable, invalid, untrusted, and unresolved required facts remain outside its bounded allowlist. This is package-only work: enrichment and the judge are not connected to the production API/runtime yet.
+
+P2-DE-4 invokes this package from `DecisionApplicationServiceV1` with injected provider-neutral sources. Public callers supply only provider references; the service resolves canonical candidate display/category data and server-owned provenance/time. Enrichment still owns deduplication, bounded source concurrency, and unknown-versus-failure semantics; no route or price fact is invented.

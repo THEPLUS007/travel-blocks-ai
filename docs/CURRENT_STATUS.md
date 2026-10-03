@@ -25,12 +25,13 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
-| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-3 COMPLETE; P2-DE-4 is next |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-4 COMPLETE; P2-DE-5 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
 | P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-3 — Bounded AI judge | COMPLETE | `02f0e34`, `f4d53ac`; GitHub Actions `37104429361` Quality/E2E/PostgreSQL SUCCESS |
+| P2-DE-4 — Versioned Decision API integration | COMPLETE | `116c142`, `5ca1271`; GitHub Actions `37106848614` Quality/E2E/PostgreSQL SUCCESS |
 
 ## Current production architecture
 
@@ -145,7 +146,15 @@ Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-DE-4 — Versioned Decision API integration**
+Next: **P2-DE-5 — Considered-place and rejected-candidate UI**
+
+## P2-DE-4 implementation status
+
+`POST /api/v1/decisions/evaluate` is a new strict `decision_api_request_v1`/`decision_api_response_v1` boundary with a strict versioned error envelope. It has no unversioned alias. `DecisionApplicationServiceV1` owns server IDs/time, canonical provider-reference resolution, factual enrichment, deterministic evaluation, optional bounded judge execution, final validation, and safe response construction. Client input cannot supply provider facts/provenance, timestamps, deterministic scores, result IDs, decision state, provider/model, or force-AI flags. The endpoint exposes no raw provider/AI payload or public AI provenance.
+
+The full-ranking `rankBoundedPlaces` operation is versioned separately from legacy `rankPlaces`; both retain the `rank_places`/`place_ranking` capability. It preserves Gemini/router execution scope, one-time selection, and adapter-owned retry/error normalization. `DECISION_AI_JUDGE_ENABLED` is false by default; skips are typed while started failures are explicit safe HTTP errors. Existing recommendation, generation, analysis, place, Trip, MCP, and authentication routes remain unchanged. No persistence, database migration, UI, Docker, deployment, restart, or live provider call occurred.
+
+Node 22.23.2 / npm 10.9.8 completed `npm ci`, decision-engine tests (16), factual-enrichment tests (10), decision-judge tests (7), AI tests (96), API tests (120), `npm run verify`, `npm run eval` (8/8 scenarios, 98/98 checks), `GEMINI_MAX_CONCURRENCY=1 npm run test:postgres` (1), and `npm audit --omit=dev` (0 vulnerabilities). Local E2E remained blocked by the existing port-3000 listener, which was not stopped; GitHub Actions run `37106848614` passed Quality, E2E, and PostgreSQL. Gemini, Places, Routes, self-hosted, Groq, NVIDIA, and OpenRouter calls were all 0.
 
 ## P2-DE-3 implementation status
 

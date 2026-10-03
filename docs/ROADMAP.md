@@ -258,9 +258,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-4 — Versioned Decision API integration
 
-**Status: PLANNED**
+**Status: COMPLETE**
 
-Integrate the versioned decision contract through the application/API boundary after the package contracts are stable.
+`POST /api/v1/decisions/evaluate` is an explicit strict V1 application boundary. `DecisionApplicationServiceV1` resolves provider references, calls factual enrichment, injects deterministic IDs/time/policy, evaluates the engine, and optionally invokes a one-call bounded full-ranking judge. The server-side judge default is disabled; existing routes are unchanged. No persistence, UI, Trip/TravelBlock conversion, Docker, deployment, or restart is included.
 
 ### P2-DE-5 — Considered-place and rejected-candidate UI
 

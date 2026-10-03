@@ -71,3 +71,7 @@ P1-5F adds a provider-neutral deterministic local-model benchmark layer, distinc
 ## P2-DE-3 bounded-judge fixtures
 
 `@travel-blocks/decision-judge` uses deterministic facts and fake ports only. Its regression suite covers policy skips, candidate bounding/tie order, exact-permutation validation, malformed output failure propagation, observer isolation, frozen-input purity, and reconciliation preservation of permanent closure, unresolved decisions, facts, provenance, deterministic scores, selection limit, and total/exclusive partition. The AI prompt-contract fixture places an injection string in a label/preference and verifies it stays inside `<user_data>`. These are contract tests, not live quality scoring; no provider is called.
+
+## P2-DE-4 Decision API fixtures
+
+API fixtures inject resolver, factual source, clock, ID factory, and judge port. They verify strict V1 request/error/response contracts, no unversioned alias, server-owned IDs, provider-reference deduplication, disabled skips, one-call full permutation application, timeout propagation, legacy-output rejection, and observer isolation. They do not call Gemini, Places, Routes, a database, or self-hosted inference.

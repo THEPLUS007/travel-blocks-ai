@@ -30,6 +30,10 @@ Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 fa
 
 `@travel-blocks/decision-judge` is an internal, provider-neutral contract and reconciliation package. The intended pipeline is `factual enrichment → @travel-blocks/decision-engine deterministic evaluation → @travel-blocks/decision-judge → DecisionResult`; API composition has not been added. The judge only orders a policy-bounded subset of hard-rule survivors. Strict validation requires an exact candidate-ID permutation, then pure reconciliation changes only that subset while preserving hard rejections, unresolved items, facts, evidence, deterministic scores, and all outside decisions. Gemini/router/default production traffic remains untouched.
 
+## P2-DE-4 Decision API — implemented, opt-in endpoint
+
+`apps/api` now exposes `POST /api/v1/decisions/evaluate` through `DecisionApplicationServiceV1`. It is an explicit consumer only: existing recommendation and trip-generation routes do not call it. The service resolves provider references, injects IDs/time, enriches facts, runs the pure engine, and only then optionally uses the bounded judge. No result is persisted and no UI/Trip/TravelBlock is constructed.
+
 ## Structured AI output
 
 ```text

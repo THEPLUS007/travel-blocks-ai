@@ -32,4 +32,6 @@ The optional judge observer records only request ID, decision request ID, policy
 
 The existing `rank_places` logical task/capability is still Gemini-only. Its current shared input/output contract is intentionally not reused as an execution contract because it returns a partial selection (up to five entries with free reasons), not a strict complete permutation. `packages/ai` therefore exposes a composition-only `rank_places`/`place_ranking` adapter seam and a data-boundary prompt builder; it changes neither router table nor production runtime. A P2-DE-4 composition root may inject a compatible adapter after its structured output is explicitly versioned.
 
+P2-DE-4 supplies that explicitly versioned operation: `rankBoundedPlaces(BoundedJudgeRequestV1)` uses the existing `rank_places` capability and Router execution/provenance path, but has a distinct strict full-ranking V1 structured-output schema. Legacy partial ranking remains unchanged. The Decision API server setting defaults to disabled; enabled execution remains Gemini-only and runs at most once per eligible request.
+
 Tests use fakes only. No Gemini, Places, Routes, self-hosted, Groq, NVIDIA, OpenRouter, database, API, Docker, or deployment call is made. P2-DE-4 owns API integration, P2-DE-5 considered/rejected UI, and P2-DE-6 snapshots/evaluation.
