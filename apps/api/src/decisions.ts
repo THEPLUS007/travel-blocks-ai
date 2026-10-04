@@ -18,68 +18,30 @@ import {
   type BoundedJudgePort,
 } from '@travel-blocks/decision-judge';
 import { TravelBlockCategorySchema } from '@travel-blocks/shared';
+import {
+  DECISION_API_MAX_CANDIDATES,
+  DecisionApiErrorResponseV1Schema,
+  DecisionApiRequestV1Schema,
+  DecisionApiResponseV1Schema,
+  type DecisionApiErrorResponseV1,
+  type DecisionApiRequestV1,
+  type DecisionApiResponseV1,
+} from '@travel-blocks/decision-api-contract';
+
+export {
+  DECISION_API_MAX_CANDIDATES,
+  DecisionApiErrorResponseV1Schema,
+  DecisionApiRequestV1Schema,
+  DecisionApiResponseV1Schema,
+  type DecisionApiErrorResponseV1,
+  type DecisionApiRequestV1,
+  type DecisionApiResponseV1,
+} from '@travel-blocks/decision-api-contract';
 
 const IdentifierSchema = z.string().trim().min(1).max(120);
-const TimestampSchema = z.string().datetime({ offset: true });
-const MAX_CANDIDATES = 20;
-
-export const DecisionApiRequestV1Schema = z.object({
-  contractVersion: z.literal('decision_api_request_v1'),
-  tripContext: z.object({
-    tripContextId: IdentifierSchema,
-    destination: z.object({ country: z.string().trim().min(1).max(80).optional(), city: z.string().trim().min(1).max(80).optional(), region: z.string().trim().min(1).max(80).optional() }).strict(),
-    tripStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    timeZone: z.string().trim().min(1).max(120).optional(),
-  }).strict(),
-  constraints: z.object({
-    requestedCategories: z.array(TravelBlockCategorySchema).max(6),
-    preferences: z.array(z.string().trim().min(1).max(120)).max(20),
-    avoidances: z.array(z.string().trim().min(1).max(120)).max(20),
-    selectionLimit: z.number().int().positive().max(MAX_CANDIDATES).optional(),
-  }).strict(),
-  candidates: z.array(z.object({
-    candidateId: IdentifierSchema,
-    providerReference: z.object({ sourceSystem: IdentifierSchema, sourceRecordId: IdentifierSchema }).strict(),
-  }).strict()).min(1).max(MAX_CANDIDATES),
-}).strict().superRefine((value, context) => {
-  const ids = new Set<string>();
-  for (const [index, candidate] of value.candidates.entries()) {
-    if (ids.has(candidate.candidateId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['candidates', index, 'candidateId'], message: 'Candidate IDs must be unique.' });
-    ids.add(candidate.candidateId);
-  }
-});
-
-export const DecisionApiErrorResponseV1Schema = z.object({
-  contractVersion: z.literal('decision_api_error_v1'),
-  error: z.object({ code: z.enum(['INVALID_DECISION_REQUEST', 'FACTUAL_DEPENDENCY_FAILURE', 'AI_DEPENDENCY_TIMEOUT', 'AI_DEPENDENCY_UNAVAILABLE', 'AI_INVALID_OUTPUT', 'DECISION_INVARIANT_FAILURE']), message: z.string().trim().min(1).max(200), retryable: z.boolean(), requestId: IdentifierSchema }).strict(),
-}).strict();
-
-const JudgeApiOutcomeSchema = z.discriminatedUnion('outcome', [
-  z.object({ outcome: z.literal('applied') }).strict(),
-  z.object({ outcome: z.literal('skipped'), reason: z.enum(['disabled', 'no_preference_signal', 'insufficient_candidates', 'no_eligible_candidates', 'no_eligible_provider']) }).strict(),
-]);
-
-export const DecisionApiResponseV1Schema = z.object({
-  contractVersion: z.literal('decision_api_response_v1'),
-  requestId: IdentifierSchema,
-  decisionRequestId: IdentifierSchema,
-  resultId: IdentifierSchema,
-  policy: z.object({ id: IdentifierSchema, version: IdentifierSchema }).strict(),
-  decisionResult: DecisionResultSchema,
-  judge: JudgeApiOutcomeSchema,
-  coverage: z.object({ status: z.enum(['complete', 'partial', 'unknown', 'unavailable']), evaluatedCandidates: z.number().int().nonnegative(), unresolvedCandidates: z.number().int().nonnegative() }).strict(),
-  candidates: z.array(z.object({ candidateId: IdentifierSchema, displayName: z.string().trim().min(1).max(200), category: TravelBlockCategorySchema }).strict()).min(1).max(MAX_CANDIDATES),
-}).strict().superRefine((value, context) => {
-  if (value.decisionResult.requestId !== value.decisionRequestId || value.decisionResult.resultId !== value.resultId) context.addIssue({ code: z.ZodIssueCode.custom, path: ['decisionResult'], message: 'Response identity must match the DecisionResult.' });
-  if (value.coverage.status !== value.decisionResult.coverage.status || value.coverage.evaluatedCandidates !== value.decisionResult.coverage.evaluatedCandidates || value.coverage.unresolvedCandidates !== value.decisionResult.coverage.unresolvedCandidates) context.addIssue({ code: z.ZodIssueCode.custom, path: ['coverage'], message: 'Response coverage must match the DecisionResult.' });
-});
-
-export type DecisionApiRequestV1 = z.infer<typeof DecisionApiRequestV1Schema>;
-export type DecisionApiResponseV1 = z.infer<typeof DecisionApiResponseV1Schema>;
-export type DecisionApiErrorResponseV1 = z.infer<typeof DecisionApiErrorResponseV1Schema>;
 
 export class DecisionApplicationError extends Error {
-  constructor(public readonly code: z.infer<typeof DecisionApiErrorResponseV1Schema>['error']['code'], public readonly retryable: boolean, cause?: unknown) {
+  constructor(public readonly code: DecisionApiErrorResponseV1['error']['code'], public readonly retryable: boolean, cause?: unknown) {
     super(code, { cause }); this.name = 'DecisionApplicationError';
   }
 }
@@ -156,7 +118,7 @@ export class DecisionApplicationServiceV1 {
     } catch (error) { throw new DecisionApplicationError('FACTUAL_DEPENDENCY_FAILURE', true, error); }
     const decisionRequest = {
       contractVersion: 'decision_request_v1' as const, requestId: decisionRequestId, tripContext: input.tripContext,
-      constraints: { requestedCategories: input.constraints.requestedCategories, preferences: input.constraints.preferences, avoidances: input.constraints.avoidances, maximumCandidates: MAX_CANDIDATES },
+      constraints: { requestedCategories: input.constraints.requestedCategories, preferences: input.constraints.preferences, avoidances: input.constraints.avoidances, maximumCandidates: DECISION_API_MAX_CANDIDATES },
       policy: { id: policy.id, version: policy.version }, candidates, facts: enrichment.snapshots,
       trace: { traceId: requestId, source: 'product_application' as const },
     };
@@ -184,7 +146,7 @@ export class DecisionApplicationServiceV1 {
   }
 }
 
-export function decisionApiError(requestId: string, code: z.infer<typeof DecisionApiErrorResponseV1Schema>['error']['code'], retryable: boolean): DecisionApiErrorResponseV1 {
+export function decisionApiError(requestId: string, code: DecisionApiErrorResponseV1['error']['code'], retryable: boolean): DecisionApiErrorResponseV1 {
   const messages = { INVALID_DECISION_REQUEST: '요청 형식이 올바르지 않습니다.', FACTUAL_DEPENDENCY_FAILURE: '현재 후보 사실을 확인할 수 없습니다.', AI_DEPENDENCY_TIMEOUT: 'AI 판단 시간이 초과되었습니다.', AI_DEPENDENCY_UNAVAILABLE: '현재 AI 판단을 사용할 수 없습니다.', AI_INVALID_OUTPUT: 'AI가 유효한 순위 형식을 반환하지 않았습니다.', DECISION_INVARIANT_FAILURE: '결정 결과를 안전하게 구성하지 못했습니다.' } as const;
   return DecisionApiErrorResponseV1Schema.parse({ contractVersion: 'decision_api_error_v1', error: { code, message: messages[code], retryable, requestId } });
 }
