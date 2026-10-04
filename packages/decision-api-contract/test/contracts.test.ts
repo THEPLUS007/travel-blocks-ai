@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DecisionApiResponseV1Schema, parseDecisionApiResponseV1 } from '../src/index.js';
+import { DecisionApiResponseV1Schema, DecisionCandidateDiscoveryRequestV1Schema, DecisionCandidateDiscoveryResponseV1Schema, parseDecisionApiResponseV1 } from '../src/index.js';
 
 const response = () => ({
   contractVersion: 'decision_api_response_v1',
@@ -40,5 +40,47 @@ describe('Decision API contract', () => {
     const value = response();
     value.candidates.push({ ...value.candidates[0] });
     expect(DecisionApiResponseV1Schema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe('Decision candidate discovery contract', () => {
+  const request = () => ({
+    contractVersion: 'decision_candidate_discovery_request_v1',
+    tripContext: { tripContextId: 'review-day-1', destination: { city: 'Seoul' } },
+    constraints: { requestedCategories: [], preferences: [], avoidances: [] },
+    candidateLimit: 2,
+  });
+  const candidateSet = () => ({
+    contractVersion: 'decision_candidate_discovery_response_v1',
+    candidateSetId: 'candidate-set-1',
+    tripContext: request().tripContext,
+    constraints: request().constraints,
+    canonicalOrder: 'candidate_id_ascending',
+    candidates: [
+      { candidateId: 'fixture:a', providerReference: { sourceSystem: 'fixture', sourceRecordId: 'a' }, displayName: 'Place A', formattedAddress: 'Seoul', category: 'sightseeing' },
+      { candidateId: 'fixture:b', providerReference: { sourceSystem: 'fixture', sourceRecordId: 'b' }, displayName: 'Place B', category: 'food' },
+    ],
+  });
+
+  it('accepts strict normalized discovery request and a canonical empty/non-empty set', () => {
+    expect(DecisionCandidateDiscoveryRequestV1Schema.parse(request()).candidateLimit).toBe(2);
+    expect(DecisionCandidateDiscoveryResponseV1Schema.parse(candidateSet()).candidates).toHaveLength(2);
+    expect(DecisionCandidateDiscoveryResponseV1Schema.parse({ ...candidateSet(), candidates: [] }).candidates).toEqual([]);
+  });
+
+  it('rejects unknown fields, limits, duplicate IDs/references, and non-canonical order', () => {
+    expect(DecisionCandidateDiscoveryRequestV1Schema.safeParse({ ...request(), providerQuery: 'forged' }).success).toBe(false);
+    expect(DecisionCandidateDiscoveryRequestV1Schema.safeParse({ ...request(), candidateLimit: 21 }).success).toBe(false);
+    const duplicate = candidateSet(); duplicate.candidates.push({ ...duplicate.candidates[0] });
+    expect(DecisionCandidateDiscoveryResponseV1Schema.safeParse(duplicate).success).toBe(false);
+    const unordered = candidateSet(); unordered.candidates.reverse();
+    expect(DecisionCandidateDiscoveryResponseV1Schema.safeParse(unordered).success).toBe(false);
+  });
+
+  it('does not mutate discovery input while validating it', () => {
+    const value = candidateSet();
+    const before = JSON.stringify(value);
+    DecisionCandidateDiscoveryResponseV1Schema.parse(value);
+    expect(JSON.stringify(value)).toBe(before);
   });
 });

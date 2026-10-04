@@ -1,32 +1,52 @@
 import { randomUUID } from 'node:crypto';
-import { PlaceRankingInputSchema, type PlaceRankingCandidate, type PlaceRankingResult, type RecommendationInput, type TravelBlock, type TravelBlockCategory } from '@travel-blocks/shared';
+import { PlaceRankingCandidateSchema, PlaceRankingInputSchema, VerifiedPlaceSchema, type PlaceRankingCandidate, type PlaceRankingResult, type RecommendationInput, type TravelBlock, type TravelBlockCategory } from '@travel-blocks/shared';
 import type { PlaceSearchProvider } from './places.js';
 
-const candidateQueries: Array<{ query: string; category: TravelBlockCategory }> = [
+export const RECOMMENDATION_CANDIDATE_QUERIES: ReadonlyArray<{ readonly query: string; readonly category: TravelBlockCategory }> = [
   { query: 'popular attractions', category: 'sightseeing' },
   { query: 'local restaurants', category: 'food' },
   { query: 'cafes', category: 'cafe' },
   { query: 'activities', category: 'activity' },
 ];
 
-export async function retrievePlaceCandidates(places: PlaceSearchProvider, input: RecommendationInput): Promise<PlaceRankingCandidate[]> {
-  const existing = new Set(input.existingPlaces.flatMap((block) => block.place ? [`${block.place.provider}:${block.place.providerPlaceId}`] : []));
-  const searches = await Promise.all(candidateQueries.map(({ query, category }) => places.search({
+export interface RecommendationCandidateRetrievalContext {
+  readonly city?: string;
+  readonly region?: string;
+  readonly existingProviderReferences?: readonly string[];
+}
+
+/** Reuses the existing category retrieval/fail-closed policy before any preview composition. */
+export async function retrieveRecommendationCandidates(
+  places: PlaceSearchProvider,
+  context: RecommendationCandidateRetrievalContext,
+  limit: number,
+): Promise<PlaceRankingCandidate[]> {
+  const searches = await Promise.all(RECOMMENDATION_CANDIDATE_QUERIES.map(({ query, category }) => places.search({
     query,
     category,
-    city: input.day.city || input.trip.city || undefined,
-    region: input.day.region,
+    city: context.city,
+    region: context.region,
   })));
-  const seen = new Set(existing);
+  const seen = new Set(context.existingProviderReferences ?? []);
   const candidates: PlaceRankingCandidate[] = [];
-  for (const place of searches.flat()) {
+  for (const result of searches.flat()) {
+    const place = VerifiedPlaceSchema.parse(result);
     const candidateId = `${place.provider}:${place.providerPlaceId}`;
     if (seen.has(candidateId)) continue;
     seen.add(candidateId);
-    candidates.push({ ...place, candidateId });
-    if (candidates.length === 40) break;
+    candidates.push(PlaceRankingCandidateSchema.parse({ ...place, candidateId }));
+    if (candidates.length === limit) break;
   }
   return candidates;
+}
+
+export async function retrievePlaceCandidates(places: PlaceSearchProvider, input: RecommendationInput): Promise<PlaceRankingCandidate[]> {
+  const existing = new Set(input.existingPlaces.flatMap((block) => block.place ? [`${block.place.provider}:${block.place.providerPlaceId}`] : []));
+  return retrieveRecommendationCandidates(places, {
+    city: input.day.city || input.trip.city || undefined,
+    region: input.day.region,
+    existingProviderReferences: [...existing],
+  }, 40);
 }
 
 export function buildPlaceRankingInput(input: RecommendationInput, candidates: PlaceRankingCandidate[]) {

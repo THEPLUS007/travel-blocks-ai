@@ -19,6 +19,7 @@ import type { AuthProvider } from './auth.js';
 import { PlaceProviderError, type PlaceSearchProvider } from './places.js';
 import { buildTripPlanningInput, groundPlanWithCandidates, retrieveIntentCandidates } from './planning.js';
 import { buildPlaceRankingInput, retrievePlaceCandidates, selectedPlacesToBlocks } from './recommendations.js';
+import { DecisionCandidateDiscoveryError, decisionCandidateDiscoveryError, discoverDecisionCandidates } from './decisionCandidates.js';
 import { SourcePipelineError, TravelSourcePipeline } from './sources.js';
 import type { TripRepository } from './repository.js';
 import { DecisionApplicationError, DecisionApplicationServiceV1, DecisionApiRequestV1Schema, decisionApiError, type DecisionApplicationServiceOptions } from './decisions.js';
@@ -169,6 +170,23 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     if (candidates.length === 0) return [];
     const ranking = await deps.ai.rankPlaces(buildPlaceRankingInput(input, candidates));
     return selectedPlacesToBlocks(candidates, ranking);
+  });
+  app.post('/api/v1/decision-candidates/discover', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
+    try {
+      return await discoverDecisionCandidates(deps.places, request.body, randomUUID);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send(decisionCandidateDiscoveryError(request.id, 'INVALID_DECISION_CANDIDATE_DISCOVERY_REQUEST', false));
+      }
+      if (error instanceof DecisionCandidateDiscoveryError) {
+        return reply.code(500).send(decisionCandidateDiscoveryError(request.id, error.code, error.retryable));
+      }
+      if (error instanceof PlaceProviderError) {
+        const status = error.code === 'rate_limit' ? 429 : error.code === 'bad_request' ? 400 : 503;
+        return reply.code(status).send(decisionCandidateDiscoveryError(request.id, 'FACTUAL_DEPENDENCY_FAILURE', error.retryable));
+      }
+      return reply.code(500).send(decisionCandidateDiscoveryError(request.id, 'CANDIDATE_DISCOVERY_INVARIANT_FAILURE', false));
+    }
   });
   app.post('/api/v1/decisions/evaluate', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {

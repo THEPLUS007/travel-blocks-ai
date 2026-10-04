@@ -7,24 +7,33 @@ const IdentifierSchema = z.string().trim().min(1).max(120);
 /** Public API cap; clients must not silently truncate candidate sets. */
 export const DECISION_API_MAX_CANDIDATES = 20;
 
+const DecisionTripContextSchema = z.object({
+  tripContextId: IdentifierSchema,
+  destination: z.object({
+    country: z.string().trim().min(1).max(80).optional(),
+    city: z.string().trim().min(1).max(80).optional(),
+    region: z.string().trim().min(1).max(80).optional(),
+  }).strict(),
+  tripStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  timeZone: z.string().trim().min(1).max(120).optional(),
+}).strict();
+
+const DecisionCandidateDiscoveryTripContextSchema = DecisionTripContextSchema.refine(
+  (context) => Object.values(context.destination).some(Boolean),
+  'A destination is required.',
+);
+
+const DecisionConstraintsSchema = z.object({
+  requestedCategories: z.array(TravelBlockCategorySchema).max(6),
+  preferences: z.array(z.string().trim().min(1).max(120)).max(20),
+  avoidances: z.array(z.string().trim().min(1).max(120)).max(20),
+  selectionLimit: z.number().int().positive().max(DECISION_API_MAX_CANDIDATES).optional(),
+}).strict();
+
 export const DecisionApiRequestV1Schema = z.object({
   contractVersion: z.literal('decision_api_request_v1'),
-  tripContext: z.object({
-    tripContextId: IdentifierSchema,
-    destination: z.object({
-      country: z.string().trim().min(1).max(80).optional(),
-      city: z.string().trim().min(1).max(80).optional(),
-      region: z.string().trim().min(1).max(80).optional(),
-    }).strict(),
-    tripStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    timeZone: z.string().trim().min(1).max(120).optional(),
-  }).strict(),
-  constraints: z.object({
-    requestedCategories: z.array(TravelBlockCategorySchema).max(6),
-    preferences: z.array(z.string().trim().min(1).max(120)).max(20),
-    avoidances: z.array(z.string().trim().min(1).max(120)).max(20),
-    selectionLimit: z.number().int().positive().max(DECISION_API_MAX_CANDIDATES).optional(),
-  }).strict(),
+  tripContext: DecisionTripContextSchema,
+  constraints: DecisionConstraintsSchema,
   candidates: z.array(z.object({
     candidateId: IdentifierSchema,
     providerReference: z.object({
@@ -41,6 +50,63 @@ export const DecisionApiRequestV1Schema = z.object({
     ids.add(candidate.candidateId);
   }
 });
+
+/** Transport-only discovery boundary: provider-backed candidates, never TravelBlocks or decisions. */
+export const DecisionCandidateDiscoveryRequestV1Schema = z.object({
+  contractVersion: z.literal('decision_candidate_discovery_request_v1'),
+  tripContext: DecisionCandidateDiscoveryTripContextSchema,
+  constraints: DecisionConstraintsSchema,
+  candidateLimit: z.number().int().positive().max(DECISION_API_MAX_CANDIDATES).optional(),
+}).strict();
+
+const DecisionCandidateDiscoveryItemV1Schema = z.object({
+  candidateId: IdentifierSchema,
+  providerReference: z.object({
+    sourceSystem: IdentifierSchema,
+    sourceRecordId: IdentifierSchema,
+  }).strict(),
+  displayName: z.string().trim().min(1).max(200),
+  formattedAddress: z.string().trim().min(1).max(300).optional(),
+  category: TravelBlockCategorySchema,
+}).strict();
+
+export const DecisionCandidateDiscoveryResponseV1Schema = z.object({
+  contractVersion: z.literal('decision_candidate_discovery_response_v1'),
+  candidateSetId: IdentifierSchema,
+  tripContext: DecisionCandidateDiscoveryTripContextSchema,
+  constraints: DecisionConstraintsSchema,
+  canonicalOrder: z.literal('candidate_id_ascending'),
+  candidates: z.array(DecisionCandidateDiscoveryItemV1Schema).max(DECISION_API_MAX_CANDIDATES),
+}).strict().superRefine((value, context) => {
+  const candidateIds = new Set<string>();
+  const references = new Set<string>();
+  let previousId: string | undefined;
+  for (const [index, candidate] of value.candidates.entries()) {
+    if (candidateIds.has(candidate.candidateId)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['candidates', index, 'candidateId'], message: 'Candidate IDs must be unique.' });
+    }
+    const referenceKey = `${candidate.providerReference.sourceSystem}\u0000${candidate.providerReference.sourceRecordId}`;
+    if (references.has(referenceKey)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['candidates', index, 'providerReference'], message: 'Provider references must be unique.' });
+    }
+    if (previousId !== undefined && previousId > candidate.candidateId) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['candidates', index, 'candidateId'], message: 'Candidates must use canonical order.' });
+    }
+    candidateIds.add(candidate.candidateId);
+    references.add(referenceKey);
+    previousId = candidate.candidateId;
+  }
+});
+
+export const DecisionCandidateDiscoveryErrorV1Schema = z.object({
+  contractVersion: z.literal('decision_candidate_discovery_error_v1'),
+  error: z.object({
+    code: z.enum(['INVALID_DECISION_CANDIDATE_DISCOVERY_REQUEST', 'FACTUAL_DEPENDENCY_FAILURE', 'CANDIDATE_DISCOVERY_INVARIANT_FAILURE']),
+    message: z.string().trim().min(1).max(200),
+    retryable: z.boolean(),
+    requestId: IdentifierSchema,
+  }).strict(),
+}).strict();
 
 export const DecisionApiErrorResponseV1Schema = z.object({
   contractVersion: z.literal('decision_api_error_v1'),
@@ -125,6 +191,9 @@ export const DecisionApiResponseV1Schema = z.object({
 export type DecisionApiRequestV1 = z.infer<typeof DecisionApiRequestV1Schema>;
 export type DecisionApiResponseV1 = z.infer<typeof DecisionApiResponseV1Schema>;
 export type DecisionApiErrorResponseV1 = z.infer<typeof DecisionApiErrorResponseV1Schema>;
+export type DecisionCandidateDiscoveryRequestV1 = z.infer<typeof DecisionCandidateDiscoveryRequestV1Schema>;
+export type DecisionCandidateDiscoveryResponseV1 = z.infer<typeof DecisionCandidateDiscoveryResponseV1Schema>;
+export type DecisionCandidateDiscoveryErrorV1 = z.infer<typeof DecisionCandidateDiscoveryErrorV1Schema>;
 export type DecisionReasonCode = DecisionApiResponseV1['decisionResult']['decisions'][number]['reason']['code'];
 export type DecisionCoverageStatus = DecisionApiResponseV1['coverage']['status'];
 export type DecisionJudgeSkipReason = Extract<DecisionApiResponseV1['judge'], { outcome: 'skipped' }>['reason'];
@@ -132,4 +201,8 @@ export type DecisionJudgeSkipReason = Extract<DecisionApiResponseV1['judge'], { 
 /** Validates wire shape and the candidate/decision total, exclusive join required by consumers. */
 export function parseDecisionApiResponseV1(input: unknown): DecisionApiResponseV1 {
   return DecisionApiResponseV1Schema.parse(input);
+}
+
+export function parseDecisionCandidateDiscoveryResponseV1(input: unknown): DecisionCandidateDiscoveryResponseV1 {
+  return DecisionCandidateDiscoveryResponseV1Schema.parse(input);
 }
