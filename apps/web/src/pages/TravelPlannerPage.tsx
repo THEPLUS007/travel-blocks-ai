@@ -6,16 +6,19 @@ import { ExportMenu } from '../components/ExportMenu';
 import { Header } from '../components/Header';
 import { Onboarding } from '../components/Onboarding';
 import { RecommendationPanel } from '../components/RecommendationPanel';
+import { ConsideredPlacesNotReady, ConsideredPlacesReviewControl } from '../components/ConsideredPlacesPanel';
 import { StatusBanner } from '../components/StatusBanner';
 import { TrustPanel } from '../components/TrustPanel';
 import { TripForm } from '../components/TripForm';
 import { useTravelPlanner } from '../hooks/useTravelPlanner';
+import { useDecisionReview } from '../hooks/useDecisionReview';
 import type { SavedTravelPlan, TripFormData } from '../types/travel';
 type ScreenMode = 'loading' | 'onboarding' | 'list' | 'editor';
 type ActiveModal = 'trip' | 'analysis' | 'recommendations' | null;
 
 export function TravelPlannerPage() {
   const planner = useTravelPlanner();
+  const { state: decisionReviewState, review: reviewCandidates, retry: retryDecisionReview, reset: resetDecisionReview } = useDecisionReview();
   const { hasStarted, loadSavedPlans, saveCurrentPlan } = planner;
   const [screen, setScreen] = useState<ScreenMode>('loading');
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
@@ -63,6 +66,12 @@ export function TravelPlannerPage() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hasStarted, saveCurrentPlan]);
+
+  const decisionReviewRequestKey = planner.decisionCandidateDiscoveryRequest ? JSON.stringify(planner.decisionCandidateDiscoveryRequest) : 'unavailable';
+
+  useEffect(() => {
+    resetDecisionReview();
+  }, [decisionReviewRequestKey, resetDecisionReview]);
 
   const openEditorFromPlan = (plan: SavedTravelPlan) => {
     planner.loadSavedPlan(plan);
@@ -244,6 +253,13 @@ export function TravelPlannerPage() {
             recommendations={planner.recommendations}
             selectedDay={planner.selectedDay}
             onAddBlock={planner.addRecommendedBlock}
+            decisionReview={planner.decisionCandidateDiscoveryRequest ? (
+              <ConsideredPlacesReviewControl
+                state={decisionReviewState}
+                onReview={() => void reviewCandidates(planner.decisionCandidateDiscoveryRequest!)}
+                onRetry={retryDecisionReview}
+              />
+            ) : <ConsideredPlacesNotReady />}
           />
         </Modal>
       ) : null}

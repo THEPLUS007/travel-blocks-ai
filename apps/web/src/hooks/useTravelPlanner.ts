@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DECISION_API_MAX_CANDIDATES, DecisionCandidateDiscoveryRequestV1Schema, type DecisionCandidateDiscoveryRequestV1 } from '@travel-blocks/decision-api-contract';
 import { EMPTY_TRIP_FORM } from '../constants/travel';
 import { inferTravelSourceType } from '../services/sourceTypeService';
 import * as travelApi from '../services/travelApi';
@@ -143,6 +144,26 @@ export function useTravelPlanner() {
     () => days.find((day) => day.id === selectedDayId) ?? days[0],
     [days, selectedDayId],
   );
+
+  const decisionCandidateDiscoveryRequest = useMemo<DecisionCandidateDiscoveryRequestV1 | null>(() => {
+    if (!hasStarted || !selectedDay) return null;
+    const destination = {
+      ...(trip.country.trim() ? { country: trip.country.trim() } : {}),
+      ...(trip.city.trim() ? { city: trip.city.trim() } : {}),
+      ...(selectedDay.region?.trim() ? { region: selectedDay.region.trim() } : {}),
+    };
+    const parsed = DecisionCandidateDiscoveryRequestV1Schema.safeParse({
+      contractVersion: 'decision_candidate_discovery_request_v1',
+      tripContext: { tripContextId: `review-${selectedDay.id}`, destination },
+      constraints: {
+        requestedCategories: [],
+        preferences: trip.style.trim() ? [trip.style.trim()] : [],
+        avoidances: [],
+      },
+      candidateLimit: DECISION_API_MAX_CANDIDATES,
+    });
+    return parsed.success ? parsed.data : null;
+  }, [hasStarted, selectedDay, trip.country, trip.city, trip.style]);
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
@@ -784,6 +805,7 @@ export function useTravelPlanner() {
     currentTripId,
     hasUnsavedChanges: isDirty,
     recommendations,
+    decisionCandidateDiscoveryRequest,
     setSourceType,
     setSourceContent,
     setSelectedDayId,

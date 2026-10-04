@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ConsideredPlacesPanel } from '../../components/ConsideredPlacesPanel';
 import { createDecisionApiClient } from '../../services/decisionApiClient';
+import { createDecisionCandidateDiscoveryClient } from '../../services/decisionCandidateDiscoveryClient';
 import { COVERAGE_COPY, createConsideredPlacesViewModel, JUDGE_SKIP_COPY, REASON_COPY } from './model';
 
 function response() {
@@ -44,6 +45,22 @@ const request = {
   tripContext: { tripContextId: 'trip-context', destination: { city: 'Seoul' } },
   constraints: { requestedCategories: ['sightseeing' as const], preferences: [], avoidances: [] },
   candidates: [{ candidateId: 'candidate-a', providerReference: { sourceSystem: 'fixture', sourceRecordId: 'place-a' } }],
+};
+
+const discoveryRequest = {
+  contractVersion: 'decision_candidate_discovery_request_v1' as const,
+  tripContext: { tripContextId: 'review-day-1', destination: { city: 'Seoul' } },
+  constraints: { requestedCategories: [], preferences: [], avoidances: [] },
+  candidateLimit: 2,
+};
+
+const candidateSet = {
+  contractVersion: 'decision_candidate_discovery_response_v1' as const,
+  candidateSetId: 'set-1',
+  tripContext: discoveryRequest.tripContext,
+  constraints: discoveryRequest.constraints,
+  canonicalOrder: 'candidate_id_ascending' as const,
+  candidates: [{ candidateId: 'fixture:a', providerReference: { sourceSystem: 'fixture', sourceRecordId: 'a' }, displayName: 'Place A', category: 'sightseeing' as const }],
 };
 
 describe('considered-place view model', () => {
@@ -120,5 +137,24 @@ describe('Decision API client', () => {
     const aborted = createDecisionApiClient(async () => { throw new DOMException('Aborted', 'AbortError'); });
     const abortedResult = await aborted.evaluate(request, controller.signal);
     expect(abortedResult).toMatchObject({ ok: false, error: { kind: 'aborted', retryable: false } });
+  });
+});
+
+describe('Decision candidate discovery client', () => {
+  it('validates a provider-backed candidate set without accepting TravelBlocks', async () => {
+    const client = createDecisionCandidateDiscoveryClient(async (input, init) => {
+      expect(input).toBe('/api/v1/decision-candidates/discover');
+      expect(init?.method).toBe('POST');
+      return new Response(JSON.stringify(candidateSet), { headers: { 'content-type': 'application/json' } });
+    });
+    expect(await client.discover(discoveryRequest)).toMatchObject({ ok: true, data: { candidateSetId: 'set-1' } });
+  });
+
+  it('fails closed for malformed discovery output and classifies retryable discovery failures', async () => {
+    const malformed = await createDecisionCandidateDiscoveryClient(async () => new Response(JSON.stringify({ contractVersion: 'decision_candidate_discovery_response_v1' }), { headers: { 'content-type': 'application/json' } })).discover(discoveryRequest);
+    expect(malformed).toMatchObject({ ok: false, error: { kind: 'invalid_response', retryable: true } });
+    const error = { contractVersion: 'decision_candidate_discovery_error_v1', error: { code: 'FACTUAL_DEPENDENCY_FAILURE', message: 'safe', retryable: true, requestId: 'request-1' } };
+    const unavailable = await createDecisionCandidateDiscoveryClient(async () => new Response(JSON.stringify(error), { status: 503, headers: { 'content-type': 'application/json' } })).discover(discoveryRequest);
+    expect(unavailable).toMatchObject({ ok: false, error: { kind: 'http', retryable: true } });
   });
 });

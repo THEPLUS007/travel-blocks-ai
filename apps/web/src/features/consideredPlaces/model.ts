@@ -70,7 +70,7 @@ export class ConsideredPlacesIntegrityError extends Error {
 }
 
 const STATUS_LABEL: Record<ConsideredPlaceStatus, string> = {
-  selected: '일정에 포함',
+  selected: '일정에 포함할 장소',
   rejected: '이번 일정에서는 제외',
   unresolved: '정보 확인 필요',
 };

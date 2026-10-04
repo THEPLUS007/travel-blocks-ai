@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleAlert, CircleHelp, Info, MapPin, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { ConsideredPlaceItem, ConsideredPlacesViewModel } from '../features/consideredPlaces/model';
+import type { DecisionReviewState } from '../hooks/useDecisionReview';
 
 interface ConsideredPlacesPanelProps {
   model: ConsideredPlacesViewModel;
@@ -23,7 +24,7 @@ export function ConsideredPlacesPanel({ model }: ConsideredPlacesPanelProps) {
       <p className="mt-2 text-xs leading-5 text-slate-600" aria-label={model.judge.ariaLabel}>{model.judge.text}</p>
 
       <div className="mt-4 space-y-5">
-        <DecisionSection title="일정에 포함" count={model.counts.selected} icon={<CheckCircle2 size={18} aria-hidden="true" className="text-teal-700" />} items={model.selected} />
+        <DecisionSection title="일정에 포함할 장소" count={model.counts.selected} icon={<CheckCircle2 size={18} aria-hidden="true" className="text-teal-700" />} items={model.selected} />
         <DecisionSection title="다른 후보" count={model.counts.rejected} icon={<XCircle size={18} aria-hidden="true" className="text-amber-700" />} items={model.rejected} />
         <DecisionSection title="확인이 필요한 후보" count={model.counts.unresolved} icon={<CircleAlert size={18} aria-hidden="true" className="text-slate-700" />} items={model.unresolved} />
       </div>
@@ -74,10 +75,10 @@ export function ConsideredPlacesEmpty() {
   return <p className="text-sm text-slate-600">함께 검토할 장소 후보가 아직 없습니다.</p>;
 }
 
-export function ConsideredPlacesError({ retryable, onRetry }: { retryable: boolean; onRetry?: () => void }) {
+export function ConsideredPlacesError({ message = '장소 검토 결과를 만들지 못했습니다.', retryable, onRetry }: { message?: string; retryable: boolean; onRetry?: () => void }) {
   return (
     <div role="alert" aria-live="polite" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-      <p>장소 검토 결과를 불러오지 못했습니다.</p>
+      <p>{message}</p>
       {retryable && onRetry ? <button type="button" onClick={onRetry} className="mt-2 min-h-10 rounded-md border border-rose-300 bg-white px-3 text-sm font-bold text-rose-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700">다시 시도</button> : null}
     </div>
   );
@@ -85,4 +86,28 @@ export function ConsideredPlacesError({ retryable, onRetry }: { retryable: boole
 
 export function ConsideredPlacesNotReady() {
   return <p className="flex items-center gap-2 text-sm text-slate-600"><CircleHelp size={16} aria-hidden="true" /> 함께 검토할 장소 후보가 아직 없습니다.</p>;
+}
+
+export function ConsideredPlacesReviewControl({ state, onReview, onRetry }: { state: DecisionReviewState; onReview: () => void; onRetry: () => void }) {
+  const loading = state.status === 'discovering_candidates' || state.status === 'evaluating_decision';
+  return (
+    <section className="rounded-lg border border-blue-100 bg-blue-50 p-4" aria-label="장소 후보 검토">
+      {state.status === 'success' ? <ConsideredPlacesPanel model={state.result} /> : null}
+      {state.status === 'discovering_candidates' ? <p role="status" aria-live="polite" className="text-sm text-slate-700">장소 후보를 불러오고 있어요.</p> : null}
+      {state.status === 'evaluating_decision' ? <ConsideredPlacesLoading /> : null}
+      {state.status === 'empty' ? <ConsideredPlacesEmpty /> : null}
+      {state.status === 'error' ? <ConsideredPlacesError message={state.stage === 'discovery' ? '장소 후보를 불러오지 못했습니다.' : state.error.message} retryable={state.error.retryable} onRetry={onRetry} /> : null}
+      {state.status !== 'success' ? (
+        <button
+          type="button"
+          data-testid="review-candidates-button"
+          onClick={onReview}
+          disabled={loading}
+          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-myrealtrip-blue px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-myrealtrip-blue"
+        >
+          {loading ? '장소 후보를 검토하고 있어요.' : '장소 후보 검토하기'}
+        </button>
+      ) : null}
+    </section>
+  );
 }
