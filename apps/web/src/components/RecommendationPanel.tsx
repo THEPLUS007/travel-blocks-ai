@@ -1,4 +1,5 @@
 import { Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { TravelBlock, TravelDay } from '../types/travel';
 import { TravelBlockCard } from './TravelBlockCard';
 
@@ -6,9 +7,11 @@ interface RecommendationPanelProps {
   recommendations: TravelBlock[];
   selectedDay?: TravelDay;
   onAddBlock: (block: TravelBlock) => void;
+  /** Reserved for a validated Decision API review; no legacy recommendation is recast as a decision candidate. */
+  decisionReview?: ReactNode;
 }
 
-export function RecommendationPanel({ recommendations, selectedDay, onAddBlock }: RecommendationPanelProps) {
+export function RecommendationPanel({ recommendations, selectedDay, onAddBlock, decisionReview }: RecommendationPanelProps) {
   const recommendationScope = selectedDay?.region ?? selectedDay?.city;
 
   return (
@@ -37,6 +40,7 @@ export function RecommendationPanel({ recommendations, selectedDay, onAddBlock }
           </button>
         ))}
       </div>
+      {decisionReview}
     </aside>
   );
 }
