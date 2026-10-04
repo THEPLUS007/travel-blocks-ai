@@ -1,6 +1,6 @@
 # Travel Blocks AI Current Status
 
-Last verified: **2026-10-03**
+Last verified: **2026-10-04**
 Repository: `THEPLUS007/travel-blocks-ai`
 Branch: `main`
 Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
@@ -25,13 +25,14 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
-| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-4 COMPLETE; P2-DE-5 is next |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-4 COMPLETE; P2-DE-5 candidate-flow prerequisite is blocked |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
 | P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-3 — Bounded AI judge | COMPLETE | `02f0e34`, `f4d53ac`; GitHub Actions `37104429361` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-4 — Versioned Decision API integration | COMPLETE | `116c142`, `5ca1271`; GitHub Actions `37106848614` Quality/E2E/PostgreSQL SUCCESS |
+| P2-DE-5 — Considered-place and rejected-candidate UI | BLOCKED | Shared contract/client/UI preparation exists; current web has no provider-backed pre-decision candidate set |
 
 ## Current production architecture
 
@@ -146,7 +147,15 @@ Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-DE-5 — Considered-place and rejected-candidate UI**
+Next: **Unblock P2-DE-5 with a real provider-backed browser candidate-set boundary; then P2-DE-6 — Decision snapshots and evaluation**
+
+## P2-DE-5 preparation and blocker
+
+`@travel-blocks/decision-api-contract` now owns the unchanged V1 Decision API request/response/error Zod schemas, inferred types, candidate cap, and candidate/decision semantic response validation. `apps/api` consumes and re-exports that neutral package; `apps/web` consumes it directly, never imports `apps/api`, and has a same-origin strict client, abort/stale-safe in-memory review hook, fail-closed mapper, exhaustive safe Korean copy, and accessible responsive panel composition seam.
+
+The panel title is `일정 생성 과정에서 함께 검토한 장소`; it separates selected (`일정에 포함`), rejected (`이번 일정에서는 제외`), and unresolved (`정보 확인 필요`) without exposing raw reason codes, provider/model data, IDs, score, or raw response. Coverage and judge summaries are safe, secondary text. It remains separate from P1-6 `장소 확인됨`, which means only provider identity connection.
+
+This is intentionally not a completed user flow. The web receives no raw provider-backed candidate set: `/api/v1/ai/recommendations` searches/ranks candidates server-side then returns already-composed `TravelBlock` previews, and clicking a preview creates an itinerary block. Re-evaluating either as a candidate would violate the Decision API and TravelBlock boundary. No Decision API request is made from production UI; no review state is persisted to Trip/TravelBlock, browser storage, or DB. P2-DE-6 snapshots/evaluation and P3 service/Docker remain unimplemented. See `CONSIDERED_PLACES_UI.md`.
 
 ## P2-DE-4 implementation status
 

@@ -75,3 +75,7 @@ P1-5F adds a provider-neutral deterministic local-model benchmark layer, distinc
 ## P2-DE-4 Decision API fixtures
 
 API fixtures inject resolver, factual source, clock, ID factory, and judge port. They verify strict V1 request/error/response contracts, no unversioned alias, server-owned IDs, provider-reference deduplication, disabled skips, one-call full permutation application, timeout propagation, legacy-output rejection, and observer isolation. They do not call Gemini, Places, Routes, a database, or self-hosted inference.
+
+## P2-DE-5 considered-place UI preparation fixtures
+
+`@travel-blocks/decision-api-contract` checks the shared V1 semantic candidate/decision partition. Web fixtures then validate one selected, one rejected, and one unresolved candidate, exhaustive reason/coverage/judge copy tables, raw internal-data exclusion, partial coverage, strict error parsing, malformed-success fail-closed behavior, retryability, and aborts. Static component rendering validates headings and list state without a browser provider call. No production UI action exists yet because the current browser flow does not receive the provider-backed pre-decision candidate set.

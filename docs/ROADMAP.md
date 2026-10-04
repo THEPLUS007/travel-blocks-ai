@@ -264,9 +264,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-5 — Considered-place and rejected-candidate UI
 
-**Status: PLANNED**
+**Status: BLOCKED — candidate-flow prerequisite missing**
 
-Show considered and rejected candidates only from the versioned decision result, with safe reason codes and no raw model reasoning.
+The reusable strict client, fail-closed mapper/component, exhaustive Korean safe-copy tables, and deterministic fixtures are prepared against `@travel-blocks/decision-api-contract`. Completion remains blocked: the current recommendation API retrieves/ranks provider candidates server-side and returns already-composed `TravelBlock` previews, so the browser has no authentic pre-decision candidate set for `POST /api/v1/decisions/evaluate`. Existing TravelBlocks and recommendation previews must not be re-evaluated as candidates. A future candidate-retrieval/decision-action boundary must expose stable provider references without changing the Trip/TravelBlock persistence boundary. See [CONSIDERED_PLACES_UI.md](CONSIDERED_PLACES_UI.md).
 
 ### P2-DE-6 — Decision snapshots and evaluation
 

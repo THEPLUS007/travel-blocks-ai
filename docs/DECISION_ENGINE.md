@@ -36,6 +36,10 @@ All scores are 0–1000 finite integers; V1 weights are positive integers and mu
 
 Every request candidate appears exactly once in the result. Each item has a safe fact and policy evidence reference plus caller-safe trace/timestamp provenance. Result semantic validation rechecks request identity, policy identity, total/exclusive partition, and coverage.
 
+## Considered-place UI boundary (P2-DE-5 preparation)
+
+The browser consumes only the public `decision_api_response_v1` contract and must join display candidates to decisions by `candidateId`. It may map the existing safe reason enum to product copy, but it cannot create a reason, score, fact, or state. Failed total/exclusive joins are display errors, not an excuse to omit candidates. `selected` is a Decision Result state; it does not itself create a `TravelBlock`, and `rejected`/`unresolved` never become `TravelBlock` values.
+
 ## Deferred rules
 
 The V1 request carries opening-hours, price, and route facts, but does not carry their corresponding explicit constraints. It has no candidate visit time/window, price/budget comparison limit, route duration/distance maximum with requested transport mode, or structured category exclusions. Therefore P2-DE-2 deliberately does not activate opening-hours, budget, route, or category-exclusion rules. It does not infer a timezone, make a route from coordinates, apply currency conversion, or use textual/AI category matching. Future work must version the policy/request inputs before enabling those rules.

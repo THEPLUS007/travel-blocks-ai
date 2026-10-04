@@ -32,7 +32,13 @@ Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 fa
 
 ## P2-DE-4 Decision API — implemented, opt-in endpoint
 
-`apps/api` now exposes `POST /api/v1/decisions/evaluate` through `DecisionApplicationServiceV1`. It is an explicit consumer only: existing recommendation and trip-generation routes do not call it. The service resolves provider references, injects IDs/time, enriches facts, runs the pure engine, and only then optionally uses the bounded judge. No result is persisted and no UI/Trip/TravelBlock is constructed.
+`apps/api` now exposes `POST /api/v1/decisions/evaluate` through `DecisionApplicationServiceV1`. Its versioned public schemas now live in provider-neutral `packages/decision-api-contract`, shared by the API and web without an `apps/web → apps/api` dependency. It is an explicit consumer only: existing recommendation and trip-generation routes do not call it. The service resolves provider references, injects IDs/time, enriches facts, runs the pure engine, and only then optionally uses the bounded judge. No result is persisted and no UI/Trip/TravelBlock is constructed.
+
+## P2-DE-5 considered-place UI — preparation, not connected
+
+The web has a strict same-origin Decision API client, an abort/stale-safe in-memory review hook, and a fail-closed display mapper/component. The UI can only consume `decision_api_response_v1` from `@travel-blocks/decision-api-contract`; it keeps only display name/category, safe status/reason copy, coverage, and safe judge summary. It does not derive facts, score, or decision state.
+
+It is deliberately not wired to a production action yet. The current recommendation route searches/ranks provider candidates entirely on the server and returns already-composed `TravelBlock` previews, while existing itinerary blocks are final aggregate values. Neither is a browser-visible raw candidate set for a new Decision API request. The optional review slot in `RecommendationPanel` is the closest composition seam; connecting it before candidate retrieval is exposed would violate the `TravelBlock`/candidate boundary. See [CONSIDERED_PLACES_UI.md](CONSIDERED_PLACES_UI.md).
 
 ## Structured AI output
 
