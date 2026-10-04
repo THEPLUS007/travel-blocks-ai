@@ -157,7 +157,7 @@ Next: **P2-DE-6 — Decision snapshots and evaluation**
 
 The previous blocker is resolved without reverse conversion: existing `/api/v1/ai/recommendations` still returns already-composed previews and remains unchanged, while the new discovery route supplies candidates before that conversion. This connected path currently displays Decision Result only; selected is not yet a preview, saved itinerary block, or completed inclusion. No review state is persisted to Trip/TravelBlock, browser storage, or DB. P2-DE-6 snapshots/evaluation and P3 service/Docker remain unimplemented. See `DECISION_CANDIDATE_FLOW.md` and `CONSIDERED_PLACES_UI.md`.
 
-P2-DE-5A/P2-DE-5 verification is recorded with the final implementation commit and CI run. Tests use fake providers/route fixtures only; Gemini, Places, Routes, self-hosted, Groq, NVIDIA, and OpenRouter calls are 0. No deployment or restart occurred.
+P2-DE-5A/P2-DE-5 verification: candidate-contract 6, Decision Engine 16, Factual Enrichment 10, Decision Judge 7, AI 96, API 124, and Web 9 tests passed; evaluation passed 8/8 scenarios and 98/98 checks; PostgreSQL passed; production audit reported 0 vulnerabilities. Local E2E correctly left the existing port-3000 listener untouched; GitHub Actions run `37208344235` passed Quality, E2E, and PostgreSQL. Tests use fake providers/route fixtures only; Gemini, Places, Routes, self-hosted, Groq, NVIDIA, and OpenRouter calls are 0. No deployment or restart occurred.
 
 ## P2-DE-4 implementation status
 
