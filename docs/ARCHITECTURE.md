@@ -34,11 +34,11 @@ Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 fa
 
 `apps/api` now exposes `POST /api/v1/decisions/evaluate` through `DecisionApplicationServiceV1`. Its versioned public schemas now live in provider-neutral `packages/decision-api-contract`, shared by the API and web without an `apps/web → apps/api` dependency. It is an explicit consumer only: existing recommendation and trip-generation routes do not call it. The service resolves provider references, injects IDs/time, enriches facts, runs the pure engine, and only then optionally uses the bounded judge. No result is persisted and no UI/Trip/TravelBlock is constructed.
 
-## P2-DE-5 considered-place UI — preparation, not connected
+## P2-DE-5 considered-place UI — connected
 
 The web has a strict same-origin Decision API client, an abort/stale-safe in-memory review hook, and a fail-closed display mapper/component. The UI can only consume `decision_api_response_v1` from `@travel-blocks/decision-api-contract`; it keeps only display name/category, safe status/reason copy, coverage, and safe judge summary. It does not derive facts, score, or decision state.
 
-It is deliberately not wired to a production action yet. The current recommendation route searches/ranks provider candidates entirely on the server and returns already-composed `TravelBlock` previews, while existing itinerary blocks are final aggregate values. Neither is a browser-visible raw candidate set for a new Decision API request. The optional review slot in `RecommendationPanel` is the closest composition seam; connecting it before candidate retrieval is exposed would violate the `TravelBlock`/candidate boundary. See [CONSIDERED_PLACES_UI.md](CONSIDERED_PLACES_UI.md).
+`POST /api/v1/decision-candidates/discover` now exposes a bounded provider-backed candidate transport set before preview composition, reusing the existing category retrieval and fail-closed provider policy. The explicit `장소 후보 검토하기` action in `RecommendationPanel` runs discovery, then the Decision API, then renders the panel in the production component tree. Existing `/api/v1/ai/recommendations` continues to compose its own previews unchanged. Because this path does not compose selected candidates into previews, selected is presented as `일정에 포함할 장소`, never as a stored block. See [DECISION_CANDIDATE_FLOW.md](DECISION_CANDIDATE_FLOW.md).
 
 ## Structured AI output
 

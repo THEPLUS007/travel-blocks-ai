@@ -82,4 +82,4 @@
 
 30. **Decision API는 public input을 authoritative fact나 decision으로 승격하지 않습니다.** V1 caller는 provider reference와 normalized preference만 제출하며 server가 candidate/fact provenance, IDs, timestamps, policy와 result를 소유합니다. API는 safe result/coverage/skip metadata만 노출하고 raw AI/provider payload나 AI provenance를 노출하지 않습니다.
 
-31. **Considered-place UI는 실제 pre-decision provider-backed candidate set이 있을 때만 Decision API를 호출합니다.** 기존 `TravelBlock`, server-side ranking의 선택 결과, 이름으로 만든 ID, 또는 mock은 candidate set으로 재해석하지 않습니다. response candidate/decision total·exclusive join이 깨지면 partial UI를 만들지 않고 fail-closed 오류를 보여야 하며, review state는 Trip/TravelBlock·브라우저 저장소·DB에 저장하지 않습니다.
+31. **Considered-place UI는 실제 pre-decision provider-backed candidate set이 있을 때만 Decision API를 호출합니다.** 후보 discovery transport는 stable candidate ID와 provider reference만 다음 Decision API에 전달하며, 기존 `TravelBlock`, server-side ranking의 선택 결과, 이름으로 만든 ID, 또는 mock을 candidate set으로 재해석하지 않습니다. response candidate/decision total·exclusive join이 깨지면 partial UI를 만들지 않고 fail-closed 오류를 보여야 하며, review state는 Trip/TravelBlock·브라우저 저장소·DB에 저장하지 않습니다.

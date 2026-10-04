@@ -264,9 +264,9 @@ Define ownership, input/output boundaries, fact/inference/decision separation, c
 
 ### P2-DE-5 — Considered-place and rejected-candidate UI
 
-**Status: BLOCKED — candidate-flow prerequisite missing**
+**Status: COMPLETE**
 
-The reusable strict client, fail-closed mapper/component, exhaustive Korean safe-copy tables, and deterministic fixtures are prepared against `@travel-blocks/decision-api-contract`. Completion remains blocked: the current recommendation API retrieves/ranks provider candidates server-side and returns already-composed `TravelBlock` previews, so the browser has no authentic pre-decision candidate set for `POST /api/v1/decisions/evaluate`. Existing TravelBlocks and recommendation previews must not be re-evaluated as candidates. A future candidate-retrieval/decision-action boundary must expose stable provider references without changing the Trip/TravelBlock persistence boundary. See [CONSIDERED_PLACES_UI.md](CONSIDERED_PLACES_UI.md).
+P2-DE-5A adds `POST /api/v1/decision-candidates/discover`, a strict provider-backed pre-decision candidate boundary reusing existing recommendation retrieval and failure policy. The actual RecommendationPanel action performs discovery, then Decision API evaluation, then renders the considered-place panel. Existing recommendation previews are not reverse-converted, Decision API/recommendation wire contracts remain compatible, and no Trip/TravelBlock or persistence change is made. Selected is displayed as `일정에 포함할 장소` until a separate existing preview/add action creates a block. See [DECISION_CANDIDATE_FLOW.md](DECISION_CANDIDATE_FLOW.md).
 
 ### P2-DE-6 — Decision snapshots and evaluation
 

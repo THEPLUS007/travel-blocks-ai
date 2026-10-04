@@ -25,14 +25,14 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 | P1-5E — Scope + AI Provenance | COMPLETE | `02293a6`; Quality/E2E/PostgreSQL SUCCESS |
 | P1-5F — Local Model Bake-off + Isolated Self-hosted PoC | COMPLETE | 2026-09-23; no local model eligible; no routing change |
 | P1-6 — Trust / Explainability UI | COMPLETE | `0098d93`, `867ac02`; Quality/E2E/PostgreSQL SUCCESS |
-| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-4 COMPLETE; P2-DE-5 candidate-flow prerequisite is blocked |
+| P2 — Decision Engine | IN PROGRESS | P2-DE-0 through P2-DE-5 COMPLETE; P2-DE-6 is next |
 | P2-DE-0 — Decision Engine ADR and boundary | COMPLETE | `08d597c` ADR boundary; `7531510`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-1 — Provider-neutral candidate and decision contracts | COMPLETE | `45ef7fd`, `8882214`; Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-2 — Deterministic pure decision engine | COMPLETE | `3a7146d`, `f48ed02`; GitHub Actions `36976995196` Quality/E2E/PostgreSQL SUCCESS |
 | P2-FE-1 — Candidate factual enrichment | COMPLETE | `e7ea430`, `5b2aad2`; GitHub Actions `36981848388` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-3 — Bounded AI judge | COMPLETE | `02f0e34`, `f4d53ac`; GitHub Actions `37104429361` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-4 — Versioned Decision API integration | COMPLETE | `116c142`, `5ca1271`; GitHub Actions `37106848614` Quality/E2E/PostgreSQL SUCCESS |
-| P2-DE-5 — Considered-place and rejected-candidate UI | BLOCKED | Shared contract/client/UI preparation exists; current web has no provider-backed pre-decision candidate set |
+| P2-DE-5 — Considered-place and rejected-candidate UI | COMPLETE | Provider-backed discovery, actual web action, strict Decision API flow, and considered-place UI |
 
 ## Current production architecture
 
@@ -147,17 +147,17 @@ Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **Unblock P2-DE-5 with a real provider-backed browser candidate-set boundary; then P2-DE-6 — Decision snapshots and evaluation**
+Next: **P2-DE-6 — Decision snapshots and evaluation**
 
-## P2-DE-5 preparation and blocker
+## P2-DE-5 completion
 
-`@travel-blocks/decision-api-contract` now owns the unchanged V1 Decision API request/response/error Zod schemas, inferred types, candidate cap, and candidate/decision semantic response validation. `apps/api` consumes and re-exports that neutral package; `apps/web` consumes it directly, never imports `apps/api`, and has a same-origin strict client, abort/stale-safe in-memory review hook, fail-closed mapper, exhaustive safe Korean copy, and accessible responsive panel composition seam.
+`@travel-blocks/decision-api-contract` owns the unchanged V1 Decision API request/response/error Zod schemas and the new strict `decision_candidate_discovery_request_v1`/`response_v1`/`error_v1` contracts. `apps/api` exposes `POST /api/v1/decision-candidates/discover`, reusing existing `PlaceSearchProvider`, category queries, `VerifiedPlace` normalization, provider-reference deduplication, bounded candidate limits, and category-failure fail-closed policy. The discovery result is a canonical provider-backed transport set, not a TravelBlock or decision.
 
-The panel title is `일정 생성 과정에서 함께 검토한 장소`; it separates selected (`일정에 포함`), rejected (`이번 일정에서는 제외`), and unresolved (`정보 확인 필요`) without exposing raw reason codes, provider/model data, IDs, score, or raw response. Coverage and judge summaries are safe, secondary text. It remains separate from P1-6 `장소 확인됨`, which means only provider identity connection.
+`apps/web` consumes the neutral package directly and, in RecommendationPanel, exposes the explicit `장소 후보 검토하기` action. It runs discovery, validates the candidate set, skips Decision API for an empty set, sends only stable candidate IDs/provider references plus normalized context/constraints to `POST /api/v1/decisions/evaluate`, validates its response, and renders the panel. The title is `일정 생성 과정에서 함께 검토한 장소`; it separates selected (`일정에 포함할 장소`), rejected (`이번 일정에서는 제외`), and unresolved (`정보 확인 필요`) without exposing raw reason codes, provider/model data, IDs, score, or raw response. Coverage and judge summaries are safe, secondary text. It remains separate from P1-6 `장소 확인됨`, which means only provider identity connection.
 
-This is intentionally not a completed user flow. The web receives no raw provider-backed candidate set: `/api/v1/ai/recommendations` searches/ranks candidates server-side then returns already-composed `TravelBlock` previews, and clicking a preview creates an itinerary block. Re-evaluating either as a candidate would violate the Decision API and TravelBlock boundary. No Decision API request is made from production UI; no review state is persisted to Trip/TravelBlock, browser storage, or DB. P2-DE-6 snapshots/evaluation and P3 service/Docker remain unimplemented. See `CONSIDERED_PLACES_UI.md`.
+The previous blocker is resolved without reverse conversion: existing `/api/v1/ai/recommendations` still returns already-composed previews and remains unchanged, while the new discovery route supplies candidates before that conversion. This connected path currently displays Decision Result only; selected is not yet a preview, saved itinerary block, or completed inclusion. No review state is persisted to Trip/TravelBlock, browser storage, or DB. P2-DE-6 snapshots/evaluation and P3 service/Docker remain unimplemented. See `DECISION_CANDIDATE_FLOW.md` and `CONSIDERED_PLACES_UI.md`.
 
-Preparation verification for `45d7827`, `558c105`, and `27cc80b`: clean `npm ci`; shared-contract tests (3 PASS); web tests (7 PASS); Decision Engine (16 PASS); Factual Enrichment (10 PASS); Decision Judge (7 PASS); AI (96 PASS); API (120 PASS); web lint/build; deterministic evaluation (8/8 scenarios, 98/98 checks); PostgreSQL (1 PASS); and `npm audit --omit=dev` (0 vulnerabilities). Local E2E was blocked by the pre-existing port-3000 `/api/v1/health` listener and that process was not touched. GitHub Actions run `37197849764` completed Quality, E2E, and PostgreSQL successfully, including `npm run verify`. All verification uses fixtures/fakes; Gemini, Places, Routes, self-hosted, Groq, NVIDIA, and OpenRouter calls were 0. No deployment or restart occurred.
+P2-DE-5A/P2-DE-5 verification is recorded with the final implementation commit and CI run. Tests use fake providers/route fixtures only; Gemini, Places, Routes, self-hosted, Groq, NVIDIA, and OpenRouter calls are 0. No deployment or restart occurred.
 
 ## P2-DE-4 implementation status
 
