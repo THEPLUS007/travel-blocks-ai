@@ -71,7 +71,7 @@ test('app contract smoke with test providers: generate, recommend, save, reopen,
   await page.getByRole('button', { name: '다시 시도' }).click();
   await expect(page.getByTestId('considered-places-panel')).toBeVisible();
   await expect(page.getByText('일정 생성 과정에서 함께 검토한 장소')).toBeVisible();
-  await expect(page.getByText('일정에 포함할 장소')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '일정에 포함할 장소' })).toBeVisible();
   await expect(page.getByText('이번 일정에서는 제외')).toBeVisible();
   await expect(page.getByText('정보 확인 필요')).toBeVisible();
   await expect(page.getByText('선택 후보')).toBeVisible();
