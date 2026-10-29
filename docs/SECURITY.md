@@ -12,9 +12,11 @@
 
 ## Dependency audit baseline
 
+Compatibility candidate (2026-10-29): the isolated security-upgrade branch passes `npm audit --omit=dev` with zero findings after semver-compatible patches and a validated Zod 4 migration. This does not describe the unchanged production runtime. Development-inclusive findings and scope are recorded in [DEPENDENCY_COMPATIBILITY.md](DEPENDENCY_COMPATIBILITY.md); the following P0 toolchain table is historical. No audit thresholds or CI checks were disabled.
+
 `npm audit --omit=dev`는 production dependency 기준으로 High/Moderate 0건이어야 합니다.
 
-현재 전체 audit에 남은 Moderate 4건은 API package의 개발 전용 migration 도구 체인입니다.
+P0 검증 당시 전체 audit에 남은 Moderate 4건은 API package의 개발 전용 migration 도구 체인입니다.
 
 | Package | Path | Exposure | Resolution |
 | --- | --- | --- | --- |

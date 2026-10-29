@@ -13,3 +13,7 @@ API itinerary validation remain unchanged. Intent/ranking limits are preserved.
 
 Follow-up: preserve bounded, sanitized provider error diagnostics on non-2xx
 responses. Error parsing and raw payload logging are not changed by this hotfix.
+
+## Zod 4 compatibility candidate
+
+In `compat/security-dependency-upgrades`, conversion uses native `z.toJSONSchema` in draft-7/input mode with inline reuse. The adapter preserves closed provider-side object schemas and the existing default/array-limit behavior. Golden fixtures from Zod 3 compare the three task response schemas, allowing only the native safe-integer maximum for dayNumber. Application Zod and itinerary checks remain independent. See [DEPENDENCY_COMPATIBILITY.md](DEPENDENCY_COMPATIBILITY.md) for test results and deployment limitations.
