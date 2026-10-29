@@ -13,6 +13,10 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 Local verification: `npm run verify` PASS (326 Vitest tests + MCP; web 37), `npm run eval` 8/8 and 98/98 PASS, isolated Chromium E2E PASS, `git diff --check` PASS. External product-provider calls, production restart/deploy, DB migration and remote push: none. New remote CI/PostgreSQL integration/security-audit results are not claimed. 기존 phase/CI/배포 기록은 아래 날짜와 evidence를 유지하며, 다음 기능 단계는 여전히 P2-DE-6입니다.
 
+## Security dependency compatibility candidate — 2026-10-29
+
+Separate branch `compat/security-dependency-upgrades` validated patched Fastify/Vite/transitive dependencies and Zod 4.6.7 with the native-schema/generic changes described in [DEPENDENCY_COMPATIBILITY.md](DEPENDENCY_COMPATIBILITY.md). Clean-install verify (328 tests + MCP), eval (8/8, 98/98), isolated Chromium E2E and production audit (0 findings) passed. Zod 4 without code changes failed type checking. This is a compatibility candidate, not a production deployment or an update to Draft PR #1; the production runtime and the original PR's CI evidence are unchanged. Dev-inclusive audit and live/DB/remote-CI limitations are recorded separately.
+
 ## Phase
 
 | Phase | Status | Evidence |
