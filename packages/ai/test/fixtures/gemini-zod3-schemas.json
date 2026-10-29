@@ -1,0 +1,320 @@
+{
+  "GenerateTripResponseSchema": {
+    "type": "object",
+    "properties": {
+      "trip": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "string"
+          },
+          "travelers": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "country",
+          "city",
+          "duration",
+          "budget",
+          "travelers",
+          "style",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "days": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "dayNumber": {
+              "type": "integer"
+            },
+            "title": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "stay",
+                      "food",
+                      "cafe",
+                      "sightseeing",
+                      "activity",
+                      "transport"
+                    ]
+                  },
+                  "priceLevel": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "time": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "memo": {
+                    "type": "string"
+                  },
+                  "estimatedCost": {
+                    "type": "string"
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "provider": {
+                        "type": "string"
+                      },
+                      "providerPlaceId": {
+                        "type": "string"
+                      },
+                      "verified": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "provider",
+                      "providerPlaceId",
+                      "verified"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "category",
+                  "priceLevel"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 100
+            }
+          },
+          "required": [
+            "id",
+            "dayNumber",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "connections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "dayId": {
+              "type": "string"
+            },
+            "sourceBlockId": {
+              "type": "string"
+            },
+            "targetBlockId": {
+              "type": "string"
+            },
+            "transportMode": {
+              "type": "string",
+              "enum": [
+                "walk",
+                "bike",
+                "taxi",
+                "bus",
+                "subway",
+                "rental_car",
+                "flight",
+                "ferry"
+              ]
+            },
+            "duration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "dayId",
+            "sourceBlockId",
+            "targetBlockId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "trip",
+      "days"
+    ],
+    "additionalProperties": false
+  },
+  "TravelIntentSchema": {
+    "type": "object",
+    "properties": {
+      "destination": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "durationDays": {
+        "type": "integer",
+        "maximum": 60
+      },
+      "travelers": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "maximum": 100
+          },
+          "companionType": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "budget": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string"
+          },
+          "originalText": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "preferences": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20
+      },
+      "avoidances": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20
+      },
+      "mobilityPreference": {
+        "type": "string",
+        "enum": [
+          "walk",
+          "minimal_walking",
+          "public_transit",
+          "car",
+          "accessible"
+        ]
+      },
+      "requestedCategories": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "stay",
+            "food",
+            "cafe",
+            "sightseeing",
+            "activity",
+            "transport"
+          ]
+        },
+        "maxItems": 6
+      }
+    },
+    "additionalProperties": false
+  },
+  "PlaceRankingResultSchema": {
+    "type": "object",
+    "properties": {
+      "selections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "candidateId": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "candidateId",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 5
+      }
+    },
+    "required": [
+      "selections"
+    ],
+    "additionalProperties": false
+  }
+}

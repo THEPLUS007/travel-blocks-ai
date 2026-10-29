@@ -10,18 +10,17 @@ export function sortBlocksByDisplayOrder(blocks: TravelBlock[]): TravelBlock[] {
 }
 
 function getBlockIndex(blockId: string, allBlocks: TravelBlock[]): number {
-  return sortBlocksByDisplayOrder(allBlocks).findIndex((block) => block.id === blockId);
+  return allBlocks.findIndex((block) => block.id === blockId);
 }
 
 export function getNextConnectableBlock(sourceBlockId: string, allBlocks: TravelBlock[]): TravelBlock | null {
-  const sortedBlocks = sortBlocksByDisplayOrder(allBlocks);
-  const sourceIndex = sortedBlocks.findIndex((block) => block.id === sourceBlockId);
+  const sourceIndex = getBlockIndex(sourceBlockId, allBlocks);
 
   if (sourceIndex < 0) {
     return null;
   }
 
-  return sortedBlocks[sourceIndex + 1] ?? null;
+  return allBlocks[sourceIndex + 1] ?? null;
 }
 
 export function validateConnection(
@@ -46,7 +45,7 @@ export function validateConnection(
     return { ok: false, reason: '삭제되었거나 현재 Day에 없는 블록은 연결할 수 없습니다.' };
   }
 
-  const nextBlock = getNextConnectableBlock(sourceBlock.id, allBlocks);
+  const nextBlock = allBlocks[sourceIndex + 1];
 
   if (!nextBlock) {
     return { ok: false, reason: '아래에 연결할 블록이 없습니다.' };
