@@ -7,6 +7,12 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## Maintenance refactoring — 2026-10-29
+
+중복·복잡도 감사 후 사용하지 않는 legacy Gemini client, 해커톤 타입, mock 재export, 분석 전달 래퍼 4개를 제거했습니다. 두 web Decision client의 전송 코드를 공유하고, 기존 domain 날짜 번호 함수를 재사용하며, 편집 변환 함수를 훅에서 분리했습니다. 연결 검사의 불필요한 배열 복사와 verify의 동일 검사 중복을 제거했습니다. API/DB/AI routing 및 제품 기능 계약은 유지했습니다. 자세한 근거·제외 범위: [REFACTORING_AUDIT.md](REFACTORING_AUDIT.md).
+
+Local verification: `npm run verify` PASS (326 Vitest tests + MCP; web 37), `npm run eval` 8/8 and 98/98 PASS, isolated Chromium E2E PASS, `git diff --check` PASS. External product-provider calls, production restart/deploy, DB migration and remote push: none. New remote CI/PostgreSQL integration/security-audit results are not claimed. 기존 phase/CI/배포 기록은 아래 날짜와 evidence를 유지하며, 다음 기능 단계는 여전히 P2-DE-6입니다.
+
 ## Phase
 
 | Phase | Status | Evidence |

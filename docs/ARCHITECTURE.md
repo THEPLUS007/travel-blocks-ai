@@ -36,6 +36,9 @@ Public request와 AI ranking input은 분리됩니다. AI는 후보에 없는 fa
 
 ## P2-DE-5 considered-place UI — connected
 
+The two web Decision endpoint adapters share `services/decisionHttpClient.ts` for JSON POST, same-origin credentials, caller cancellation, and safe failure classification. Request/error schemas, semantic response parsing, and UI messages remain endpoint-owned. The ordinary Trip API retains its separate timeout/exception contract. The editor reuses domain `renumberDays`, with local movement/cloning helpers in `utils/travelPlanEditing.ts`; React request/state orchestration remains in `useTravelPlanner`.
+
+
 The web has a strict same-origin Decision API client, an abort/stale-safe in-memory review hook, and a fail-closed display mapper/component. The UI can only consume `decision_api_response_v1` from `@travel-blocks/decision-api-contract`; it keeps only display name/category, safe status/reason copy, coverage, and safe judge summary. It does not derive facts, score, or decision state.
 
 `POST /api/v1/decision-candidates/discover` now exposes a bounded provider-backed candidate transport set before preview composition, reusing the existing category retrieval and fail-closed provider policy. The explicit `장소 후보 검토하기` action in `RecommendationPanel` runs discovery, then the Decision API, then renders the panel in the production component tree. Existing `/api/v1/ai/recommendations` continues to compose its own previews unchanged. Because this path does not compose selected candidates into previews, selected is presented as `일정에 포함할 장소`, never as a stored block. See [DECISION_CANDIDATE_FLOW.md](DECISION_CANDIDATE_FLOW.md).
