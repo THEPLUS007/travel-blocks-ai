@@ -7,6 +7,12 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## Merged PR branch cleanup — 2026-11-05
+
+Added `.github/workflows/delete-merged-branch.yml` on `ops/ops-01-openspec-governance`. After the workflow reaches the default branch, merged same-repository PRs can delete their source branch using the isolated job's `contents: write` GITHUB_TOKEN. The workflow never checks out PR code; main/default/base/protected branches, forks and branch tips advanced after the merged PR head are preserved. No production runtime, deployment, database or AI routing change. Local branches remain untouched. See [DEPLOYMENT.md](DEPLOYMENT.md#merged-pr-branch-cleanup) for behavior, permissions and the API check/delete race limitation.
+
+Local evidence: `python3 scripts/test-branch-cleanup.py` PASS (10 offline tests), `python3 scripts/test-operations.py` PASS (9 tests), workflow YAML and embedded Python syntax checks PASS, `npm run eval` PASS (8/8 scenarios, 98/98 checks). `npm run verify` PASS (lint/typecheck, 326 Vitest tests plus MCP, package/app builds); `git diff --check` PASS. Cleanup tests are added to Quality CI. No live GitHub branch deletion, remote workflow run, push or merge was performed; end-to-end deletion remains unverified until an eligible merged PR runs the workflow.
+
 ## OPS-01 OpenSpec planning tooling — 2026-11-05
 
 On branch `ops/ops-01-openspec-governance`, based on `70babadcf3f8a3b8fe7937638701e2b11688b2a2`, OpenSpec 1.16.0 was installed with explicit user approval and initialized for Codex at the repository root. Six generated skills were inspected and adapted to reference existing engineering governance. Root AGENTS.md, INVARIANTS.md and ROADMAP.md retain their authority and content. See [OPENSPEC_GOVERNANCE.md](OPENSPEC_GOVERNANCE.md) for mapping, file inventory, conflict audit, exact commands and limitations.
