@@ -7,6 +7,14 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## OPS-01 OpenSpec planning tooling — 2026-11-05
+
+On branch `ops/ops-01-openspec-governance`, based on `70babadcf3f8a3b8fe7937638701e2b11688b2a2`, OpenSpec 1.16.0 was installed with explicit user approval and initialized for Codex at the repository root. Six generated skills were inspected and adapted to reference existing engineering governance. Root AGENTS.md, INVARIANTS.md and ROADMAP.md retain their authority and content. See [OPENSPEC_GOVERNANCE.md](OPENSPEC_GOVERNANCE.md) for mapping, file inventory, conflict audit, exact commands and limitations.
+
+The initial [P2-DE-6 proposal](../openspec/changes/p2-de-6-decision-snapshots-evaluation/proposal.md), design and tasks are planning only: **0/9 implementation tasks complete**, no behavior specs adopted, no P2-DE-6 implementation. Strict OpenSpec validation passes with the explicit documentation-only `skip_specs` marker; remove it and review behavioral deltas before implementation. P2-DE-6 remains PLANNED and the next feature stage.
+
+Local verification: `npm run verify` PASS (326 Vitest tests plus MCP, package/app builds and lint), `npm run typecheck` PASS, `npm run eval` PASS (8/8 scenarios, 98/98 checks), OpenSpec strict change/all validation and spec-driven schema validation PASS, local Markdown links/skill checks PASS, `git diff --check` PASS. No product source/API/DB/LLM routing/deployment/secret change. Remote CI, PostgreSQL integration, browser E2E and live product-provider checks were not run for OPS-01.
+
 ## Maintenance refactoring — 2026-10-29
 
 중복·복잡도 감사 후 사용하지 않는 legacy Gemini client, 해커톤 타입, mock 재export, 분석 전달 래퍼 4개를 제거했습니다. 두 web Decision client의 전송 코드를 공유하고, 기존 domain 날짜 번호 함수를 재사용하며, 편집 변환 함수를 훅에서 분리했습니다. 연결 검사의 불필요한 배열 복사와 verify의 동일 검사 중복을 제거했습니다. API/DB/AI routing 및 제품 기능 계약은 유지했습니다. 자세한 근거·제외 범위: [REFACTORING_AUDIT.md](REFACTORING_AUDIT.md).
