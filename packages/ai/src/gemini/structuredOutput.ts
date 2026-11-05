@@ -1,5 +1,4 @@
-import type { ZodTypeAny } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z, type ZodType } from 'zod';
 
 const supportedKeys = new Set([
   '$id', '$defs', '$ref', '$anchor', 'type', 'format', 'title', 'description', 'enum', 'items', 'prefixItems',
@@ -19,8 +18,20 @@ function geminiSubset(value: unknown): unknown {
   }));
 }
 
-export function toGeminiResponseJsonSchema(schema: ZodTypeAny, compatibility?: 'travel-plan'): Record<string, unknown> {
-  const jsonSchema = zodToJsonSchema(schema, { target: 'jsonSchema7', $refStrategy: 'none' });
+export function toGeminiResponseJsonSchema(schema: ZodType, compatibility?: 'travel-plan'): Record<string, unknown> {
+  const jsonSchema = z.toJSONSchema(schema, {
+    target: 'draft-7',
+    io: 'input',
+    reused: 'inline',
+    cycles: 'throw',
+    override: ({ jsonSchema }) => {
+      // Keep the previous provider-side restriction on unknown object fields.
+      // Input mode keeps application defaults optional, as in the Zod 3 contract.
+      if (jsonSchema.type === 'object' && jsonSchema.additionalProperties === undefined) {
+        jsonSchema.additionalProperties = false;
+      }
+    },
+  });
   const result = geminiSubset(jsonSchema) as Record<string, unknown>;
   if (compatibility === 'travel-plan') {
     // Gemini rejects the complex blocks array with maxItems=100. Local Zod and

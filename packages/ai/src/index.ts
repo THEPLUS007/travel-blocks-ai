@@ -214,7 +214,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider, BoundedRankPlac
     try { return await operation(); } finally { this.active--; this.queue.shift()?.(); }
   }
 
-  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, compatibility?: 'travel-plan', normalizeOutput?: (output: unknown) => unknown): Promise<T> {
+  private request<T>(task: AiTask, prompt: TaskPrompt, schema: ZodType<T>, model: string, compatibility?: 'travel-plan', normalizeOutput?: (output: unknown) => unknown): Promise<T> {
     const key = `${model}:${task}:${prompt.userData}`;
     const current = this.inFlight.get(key);
     if (current) return current as Promise<T>;
@@ -267,7 +267,7 @@ export class GeminiTravelAiProvider implements TravelAiProvider, BoundedRankPlac
   private timeoutFor(task: AiTask): number { const timeoutClass = this.timeoutClass(task); return timeoutClass === 'intent' ? this.intentTimeoutMs : timeoutClass === 'long' ? this.longTaskTimeoutMs : this.timeoutMs; }
   private retryBudgetFor(task: AiTask): number { const timeoutClass = this.timeoutClass(task); return timeoutClass === 'intent' ? Math.max(SHORT_TASK_RETRY_BUDGET_MS, this.intentTimeoutMs + INTENT_RETRY_BUDGET_HEADROOM_MS) : timeoutClass === 'long' ? this.longTaskRetryBudgetMs : SHORT_TASK_RETRY_BUDGET_MS; }
 
-  private async call<T>(prompt: TaskPrompt, schema: ZodType<T, any, any>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs, normalizeOutput?: (output: unknown) => unknown): Promise<T> {
+  private async call<T>(prompt: TaskPrompt, schema: ZodType<T>, model: string, captureUsage: (usage: AiUsage) => void, captureDiagnostics: (diagnostics: AiOutputDiagnostics) => void, compatibility?: 'travel-plan', timeoutMs = this.timeoutMs, normalizeOutput?: (output: unknown) => unknown): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {

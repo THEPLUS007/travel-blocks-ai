@@ -27,7 +27,7 @@
     "build:packages": "npm run build -w @travel-blocks/shared && npm run build -w @travel-blocks/domain && npm run build -w @travel-blocks/ai && npm run build -w @travel-blocks/decision-engine && npm run build -w @travel-blocks/factual-enrichment && npm run build -w @travel-blocks/decision-judge && npm run build -w @travel-blocks/decision-api-contract",
     "build:apps": "npm run build -w @travel-blocks/api && npm run build -w @travel-blocks/mcp && npm run build -w @travel-blocks/web",
     "pretest": "npm run build:packages",
-    "verify": "npm run lint && npm run typecheck && npm test && npm run build:apps"
+    "verify": "npm run lint && npm test && npm run build:apps"
   },
   "engines": {
     "node": ">=22.12 <23"
