@@ -7,6 +7,14 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## P2-DE-6 behavior specification — 2026-11-05
+
+On `spec/p2-de-6-decision-replay`, based on main `e07bb397dfc3ef6810233c53ae4108e251ab006d`, reviewed the OPS-01 proposal against the actual engine/judge contracts, current tests, fixture exports and existing evaluation runner. The [behavior delta](../openspec/changes/p2-de-6-decision-snapshots-evaluation/specs/decision-replay-evaluation/spec.md) now defines **12 requirements and 33 WHEN/THEN scenarios**. Removed `skip_specs` and reconciled proposal/design/tasks. Snapshot scope is synthetic offline replay with full policies/fixed context; score expectations are replay metadata, expected-error cases use controlled faults, and corrupt data is not counted as a passing negative case. Runtime/user-history capture and persistence remain excluded.
+
+P2-DE-6 is **DESIGN DEFINED, not implemented**. OpenSpec reports 4/4 planning artifacts and 2/9 tasks complete (the two planning tasks only); all 7 implementation tasks remain unchecked. The planned dataset/runner, `eval:decision` command and its CI gate do not exist yet. Baseline `openspec/specs/` remains empty: proposed behavior was not synced as implemented capability. Next action is review of this specification/design, then separately authorized implementation.
+
+Local evidence: `OPENSPEC_TELEMETRY=0 openspec validate p2-de-6-decision-snapshots-evaluation --strict --no-interactive` PASS; `OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive --json` PASS (1 change, zero issues); `OPENSPEC_TELEMETRY=0 openspec schema validate spec-driven` PASS. Inline checks confirmed 12 requirements/33 trigger-and-outcome scenarios, local Markdown links, removal of the skip marker and unchanged empty baseline specs. `npm run verify` PASS (328 Vitest tests plus MCP, lint/typecheck and package/app builds), `npm run eval` PASS (8/8 scenarios, 98/98 checks), `npm audit --omit=dev` PASS (0 vulnerabilities), `git diff --check` PASS. Existing Zod PURE-comment build warnings are non-fatal. Logs: `/tmp/p2-de6-spec-{verify,eval}.log` for this session only. Product/CI/governance boundary check: `git diff --exit-code e07bb397dfc3ef6810233c53ae4108e251ab006d -- AGENTS.md docs/INVARIANTS.md docs/ARCHITECTURE.md apps packages package.json package-lock.json .github deploy` PASS. No application source, migration, prompt/model/routing, deployment, secret or provider call change; remote CI/live/DB/E2E results are not claimed for this planning revision.
+
 ## OPS-01 CI audit resolution and main synchronization — 2026-11-05
 
 PR #3's original run [42037931882](https://github.com/THEPLUS007/travel-blocks-ai/actions/runs/42037931882) failed only at `npm audit --omit=dev` (5 findings); verify, eval, E2E and PostgreSQL passed. Security PR #2 had been merged into the refactor branch, not main. With user authorization, refactor/security PR #1 was merged into main at `11f20081b007b6ef26ad70cd0624213b6079c821`, then main was merged into OPS-01 at `652f2b793e110bd2ac05cb82d8bd61d416073614` without conflicts. No force push, deployment or service restart was used.
@@ -63,6 +71,7 @@ Separate branch `compat/security-dependency-upgrades` validated patched Fastify/
 | P2-DE-3 — Bounded AI judge | COMPLETE | `02f0e34`, `f4d53ac`; GitHub Actions `37104429361` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-4 — Versioned Decision API integration | COMPLETE | `116c142`, `5ca1271`; GitHub Actions `37106848614` Quality/E2E/PostgreSQL SUCCESS |
 | P2-DE-5 — Considered-place and rejected-candidate UI | COMPLETE | Provider-backed discovery, actual web action, strict Decision API flow, and considered-place UI |
+| P2-DE-6 — Decision snapshots and evaluation | DESIGN DEFINED | Behavior delta: 12 requirements/33 scenarios; planning complete, implementation unstarted |
 
 ## Current production architecture
 
@@ -177,7 +186,7 @@ Production audit: **0 vulnerabilities**
 
 Production AI routing: **Gemini-only**
 
-Next: **P2-DE-6 — Decision snapshots and evaluation**
+Next: **P2-DE-6 implementation after behavior-spec review**
 
 ## P2-DE-5 completion
 

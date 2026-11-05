@@ -22,7 +22,7 @@ Run commands from the repository root. Run `openspec list --json` and `openspec 
 
 Use `$openspec-propose` in Codex for new plans. `$openspec-update-change` revises plans; `$openspec-explore` is read-only unless capturing requested artifacts. `$openspec-apply-change` requires implementation authorization; `$openspec-sync-specs` and `$openspec-archive-change` require delivered evidence. These names are skill invocations, not shell commands. CLI structural validation, planning status and task counts are separate evidence.
 
-For the initial P2-DE-6 draft, OPS-01 authorizes proposal/design/tasks only. Its `.openspec.yaml` has `skip_specs: true` because this delivery adopts no behavioral changes. Strict validation accepts zero deltas for that marker; it does not validate future behavior. Before any P2-DE-6 implementation, remove the marker and create reviewed behavioral scenarios. Do not follow the CLI's generic apply suggestion as authorization. Durable user history is deferred; the proposed snapshot is synthetic offline evaluation data.
+OPS-01 initially authorized a P2-DE-6 proposal/design/tasks draft only, with `skip_specs: true` to avoid inventing behavior specs during tool setup. The subsequent P2-DE-6 planning task removes that marker and defines [behavior scenarios](../openspec/changes/p2-de-6-decision-snapshots-evaluation/specs/decision-replay-evaluation/spec.md); it still does not authorize or implement feature code. Check CURRENT_STATUS.md and current artifacts rather than interpreting the historical setup evidence below as current task progress. Do not follow the CLI's generic apply suggestion as authorization. Durable user history is deferred; the proposed snapshot is synthetic offline evaluation data.
 
 ## Generated skill audit
 
@@ -90,7 +90,7 @@ All checks below were run locally on 2026-11-05 against the OPS-01 worktree base
 
 Generated adapters are intentionally customized: `openspec init`/`openspec update` can overwrite them. Review regeneration on a feature branch, inspect all six diffs and reapply this mapping before use; do not automatically refresh them in CI. The global CLI belongs to Node v22.23.2's nvm installation and is not a pinned repo dependency. Reproduce with the exact approved install command; reassess updates deliberately. The config/skills are prompt-level constraints, not an enforced security or CI gate.
 
-Next action: review the P2-DE-6 offline snapshot scope/design, then in a separately authorized implementation task remove skip_specs and author behavioral deltas before apply. Do not archive this draft as delivered functionality. No production source, API contract, DB schema, LLM routing, deployments or secrets were changed; no product-provider call or deployment was requested/performed. Remote CI, PostgreSQL integration and browser E2E are not claimed for this documentation/tooling change.
+Next action after the P2-DE-6 planning follow-up: review the current behavior delta/design, then authorize implementation separately before apply. Do not archive this draft as delivered functionality. No production source, API contract, DB schema, LLM routing, deployments or secrets were changed; no product-provider call or deployment was requested/performed. Remote CI, PostgreSQL integration and browser E2E are not claimed for this documentation/tooling change.
 
 ## Follow-up: CI audit failure resolution — 2026-11-05
 

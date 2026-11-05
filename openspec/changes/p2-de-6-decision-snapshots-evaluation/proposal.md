@@ -2,29 +2,33 @@
 
 ## Why
 
-[ROADMAP P2-DE-6](../../../docs/ROADMAP.md#p2-de-6--decision-snapshots-and-evaluation) calls for reproducible decision snapshots, evaluations and regression gates. Existing package/API/UI tests cover individual contracts, but there is no versioned replay dataset and aggregate decision-quality report.
+[ROADMAP P2-DE-6](../../../docs/ROADMAP.md#p2-de-6--decision-snapshots-and-evaluation) requires reproducible decision snapshots, evaluations and regression gates. Existing engine, judge and API tests verify individual behavior, but there is no versioned decision replay dataset or aggregate regression report.
 
 ## What Changes
 
-This OPS-01 deliverable is a documentation-only initial proposal, design and future task list. It adopts no behavioral spec and implements no P2-DE-6 code. The metadata explicitly skips specs for this planning delivery; remove that marker and author reviewed behavior deltas before implementation.
+Define the `decision-replay-evaluation` behavior contract and reconcile the OPS-01 draft with current source/tests. This delivery writes planning documents only; the runner, replay schemas, fixture dataset and CI integration remain unimplemented.
 
-Proposed future work:
-- A synthetic, versioned replay envelope for normalized request/facts, complete deterministic policy and explicit evaluation context, with expected results.
-- Offline decision evaluation and a separate fixture-only bounded-judge replay lane.
-- Repeatability, candidate-accounting, unknown-state and judge-authority regression gates plus safe reports.
+The planned implementation will add:
+
+- Synthetic offline snapshots containing complete normalized inputs, full policy values, fixed evaluation context and independently reviewed expected outcomes.
+- Separate deterministic and fake-port bounded-judge replay lanes, including expected failure cases.
+- Strict dataset validation, repeatability/partition/score/judge preservation checks, minimum coverage gates and safe human/JSON reports.
+- An additive `npm run eval:decision` command and Quality CI gate, separate from the existing itinerary evaluation.
 
 ## Capabilities
 
 ### New Capabilities
 
-None adopted in OPS-01. Future behavioral specs should cover the cohesive `decision-replay-evaluation` capability after review of this design.
+- `decision-replay-evaluation`: reproducible synthetic decision replay and offline regression evidence. Requirements and testable scenarios are in [the delta specification](specs/decision-replay-evaluation/spec.md).
 
 ### Modified Capabilities
 
-None. `openspec list --specs` found no existing capability specs; existing engineering documents remain authoritative.
+None. The baseline OpenSpec capability inventory is empty. Existing engineering documents retain authority; this delta introduces no replacement governance.
 
 ## Impact
 
-Future implementation should reuse `packages/decision-engine`, `packages/decision-judge`, `packages/test-fixtures` and existing evaluation tooling. No new production persistence, API, schema, model routing, deployment or dependency is proposed here. Durable user-history storage is deferred until retention, owner isolation and query needs justify a separate reviewed change.
+Implementation is planned in existing decision-engine/decision-judge, test-fixtures and API evaluation tooling boundaries, using current validators and no new external library. Full policies are necessary because IDs alone omit overrides. DecisionResult V1 has no scores; score assertions remain replay-only metadata.
 
-Governance: [AGENTS.md](../../../AGENTS.md), [INVARIANTS](../../../docs/INVARIANTS.md), [CURRENT_STATUS](../../../docs/CURRENT_STATUS.md), [ROADMAP](../../../docs/ROADMAP.md), [ARCHITECTURE](../../../docs/ARCHITECTURE.md), [ADR 0001](../../../docs/adr/0001-decision-engine-boundary.md), [EVALUATION](../../../docs/EVALUATION.md). These links define authority; this proposal does not copy their rules or revise phase status.
+Production runtime capture, user decision history, persistence/DB migrations, public API/UI changes, model/prompt/routing changes, live providers, route-time claims and P3 service/deployment work are excluded. Snapshots are curated test artifacts, not saved Trip/TravelBlock state. No runtime/CI command is added by this planning delivery.
+
+Governance: [AGENTS.md](../../../AGENTS.md), [INVARIANTS](../../../docs/INVARIANTS.md), [CURRENT_STATUS](../../../docs/CURRENT_STATUS.md), [ROADMAP](../../../docs/ROADMAP.md), [ARCHITECTURE](../../../docs/ARCHITECTURE.md), [ADR 0001](../../../docs/adr/0001-decision-engine-boundary.md), [EVALUATION](../../../docs/EVALUATION.md). See [design.md](design.md) for source evidence and [tasks.md](tasks.md) for delivery gates.

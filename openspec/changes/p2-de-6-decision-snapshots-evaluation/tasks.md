@@ -1,28 +1,28 @@
 # Tasks
 
-Future P2-DE-6 work only. OPS-01 implements none of these tasks. See [design.md](design.md); the documentation-only skip marker is not permission to apply.
+This planning delivery completes section 1 only. P2-DE-6 runtime/tooling implementation remains unstarted. Behavior: [spec](specs/decision-replay-evaluation/spec.md). Approach and coverage matrix: [design](design.md). A separate implementation request is required before section 2.
 
 ## 1. Review and behavioral contract
 
-- [ ] 1.1 Review the proposed offline scope against ROADMAP P2-DE-6 and ADR 0001; record the accepted scope and confirm durable history remains deferred.
-- [ ] 1.2 Remove `skip_specs` and author decision-replay-evaluation behavior deltas with replay, privacy, failure and insufficient-evidence scenarios; verify strict OpenSpec validation and review before implementing.
+- [x] 1.1 Review the offline scope against ROADMAP P2-DE-6, ADR 0001 and actual engine/judge/fixture tests; record the synthetic-only snapshot boundary, deferred durable history, score/result separation and controlled negative-case design in design.md.
+- [x] 1.2 Remove skip_specs, author decision-replay-evaluation behavior deltas, reconcile proposal/design/tasks and verify strict OpenSpec validation plus requirement-to-scenario coverage; document design readiness without claiming implementation completion.
 
 ## 2. Replay envelope and fixtures
 
-- [ ] 2.1 Add the versioned strict replay envelope reusing existing request/result/policy/context validators; verify valid round-trip, unknown version, extra fields and mismatched-reference tests; document envelope ownership in EVALUATION.md.
-- [ ] 2.2 Curate the design acceptance matrix in packages/test-fixtures with full policy overrides and fixed context; verify synthetic provenance, coverage manifest and no raw payload/user data, with reviewed expected outcomes.
+- [ ] 2.1 Add strict dataset/snapshot/report contracts using existing request/result/policy/context validators, safe outcome categories and enumerated faults; verify JSON round trip, policy overrides, unknown versions/fields, invalid expected references, duplicate IDs and privacy rejection tests; document contracts and synthetic-review limitations in EVALUATION.md.
+- [ ] 2.2 Curate the design's complete manifest/coverage matrix in packages/test-fixtures with a decision-only data entry point, fixed context and independent goldens/scores; verify synthetic provenance, exercised assertions for each required group and no live-adapter dependency; document expected-data review/version procedure alongside fixtures.
 
 ## 3. Offline runner and regression gates
 
-- [ ] 3.1 Implement deterministic replay and aggregate reporting using existing engine validators; verify exact output, repeatability, canonical ordering, accounting, known-bad golden failure and empty-dataset nonzero exit; document the command and report semantics.
-- [ ] 3.2 Add fake-port bounded-judge replay using existing judge validation/reconciliation; verify valid permutations, skips, malformed output, started errors and unchanged hard rejection/unresolved/facts/scores; document that replay does not certify live AI quality.
-- [ ] 3.3 Add a separate npm evaluation command and Quality CI step after proving offline operation; verify successful and intentionally failing process exit codes without product-provider or DB access; document any informational timing and its limits.
+- [ ] 3.1 Implement deterministic replay, score/accounting/purity checks and safe gate/reporting with existing engine owners; verify repeated/reversed inputs, threshold/tie/unknown precedence, schema-valid wrong golden, corrupt/empty dataset, missing coverage, safe diagnostics and deterministic human/JSON summaries through unit/process tests; document FAIL/INSUFFICIENT_EVIDENCE precedence and denominators.
+- [ ] 3.2 Implement isolated fake-port judge replay using existing eligibility/validation/reconciliation; verify all five skip reasons/precedence, policy bounding, valid permutation, every malformed-output/started-failure category, expected port counts, failure identity and preserved facts/scores/protected decisions; document that this is reconciliation evidence rather than live AI certification.
+- [ ] 3.3 Add root npm run eval:decision with tested --json forwarding and Quality CI gate after offline isolation is proven; verify exit codes for passing/wrong-golden/missing-coverage inputs, parseable safe JSON and zero network/DB/credential use; document commands and limitations without weakening existing gates.
 
 ## 4. Integration evidence and delivery
 
-- [ ] 4.1 Run npm run verify, npm run typecheck, npm run build, npm run eval and the new decision evaluation command; record exact results and relevant CI evidence, with no phase completion claim before required gates pass.
-- [ ] 4.2 Review docs/CURRENT_STATUS.md and related evaluation/architecture documentation against implemented evidence; update ROADMAP only for evidenced phase changes; verify git diff --check and scope inventory before a focused feat(eval) commit under AGENTS.md.
+- [ ] 4.1 Run npm run verify (lint/typecheck, tests and package/app builds), npm run eval, npm run eval:decision and its JSON mode, npm audit --omit=dev and relevant CI Quality/E2E/PostgreSQL; record exact results and an inspected HEAD, with no completion claim before required evidence exists.
+- [ ] 4.2 Update CURRENT_STATUS.md, EVALUATION.md and relevant architecture documentation against delivered evidence; update ROADMAP only for evidenced phase status, verify git diff --check and scope inventory, then land a focused feat(eval) commit under AGENTS.md.
 
 ## Workflow follow-up
 
-- Review implementation evidence before archive; planning completeness does not mean P2-DE-6 is complete.
+- Review the implementation evidence before archive or main-spec sync; planning completeness is not P2-DE-6 functionality.

@@ -270,9 +270,11 @@ P2-DE-5A adds `POST /api/v1/decision-candidates/discover`, a strict provider-bac
 
 ### P2-DE-6 — Decision snapshots and evaluation
 
-**Status: PLANNED**
+**Status: DESIGN DEFINED — implementation not started**
 
-Add reproducible snapshots, evaluations, and regression gates for decision behavior.
+Define reproducible offline snapshots from synthetic normalized decision inputs, complete policies and fixed context, plus deterministic/fake-judge replay, required behavior coverage and safe regression reports. The [OpenSpec change](../openspec/changes/p2-de-6-decision-snapshots-evaluation/proposal.md) and [behavior specification](../openspec/changes/p2-de-6-decision-snapshots-evaluation/specs/decision-replay-evaluation/spec.md) define the implementation scope; current evidence remains in CURRENT_STATUS.md.
+
+The implementation gate requires versioned synthetic fixtures, exact/repeated/reordered replay, candidate accounting and unknown-state preservation, bounded judge authority/failure checks, exercised coverage, safe human/JSON reports and a separate offline `eval:decision` command integrated into Quality CI without weakening existing checks. Runtime/user-history capture, persistence/API/UI changes, live provider/model evaluation and P3 readiness are excluded. Durable history needs a separate retention/ownership/persistence design. This design status does not mean any runner or dataset is implemented.
 
 ## P3 — Deployable Decision Service
 
