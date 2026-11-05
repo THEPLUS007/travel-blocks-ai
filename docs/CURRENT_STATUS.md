@@ -7,6 +7,12 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## OPS-01 CI audit resolution and main synchronization — 2026-11-05
+
+PR #3's original run [42037931882](https://github.com/THEPLUS007/travel-blocks-ai/actions/runs/42037931882) failed only at `npm audit --omit=dev` (5 findings); verify, eval, E2E and PostgreSQL passed. Security PR #2 had been merged into the refactor branch, not main. With user authorization, refactor/security PR #1 was merged into main at `11f20081b007b6ef26ad70cd0624213b6079c821`, then main was merged into OPS-01 at `652f2b793e110bd2ac05cb82d8bd61d416073614` without conflicts. No force push, deployment or service restart was used.
+
+Post-merge local evidence: `npm ci` PASS; `npm run verify` PASS (328 Vitest tests plus MCP, lint/typecheck, package/app builds); `npm run eval` PASS (8/8, 98/98); `npm audit --omit=dev` PASS (0 vulnerabilities); `python3 scripts/test-branch-cleanup.py` PASS (10); `python3 scripts/test-operations.py` PASS (9); `OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive --json` PASS (1 change; documentation-only skip_specs); `git diff --check` PASS. `git diff --exit-code origin/main -- package.json package-lock.json apps packages` PASS: the OPS-01 delta does not modify main's product code/dependencies. Zod PURE-comment build warnings remain non-fatal. Clean install's development-inclusive audit reports 14 findings (12 moderate, 2 critical), separate from the passing production gate; no audit threshold was weakened. Updated OPS-01 remote CI remains to be observed after push; prior success is not substituted for that run. P2-DE-6 remains unimplemented.
+
 ## Merged PR branch cleanup — 2026-11-05
 
 Added `.github/workflows/delete-merged-branch.yml` on `ops/ops-01-openspec-governance`. After the workflow reaches the default branch, merged same-repository PRs can delete their source branch using the isolated job's `contents: write` GITHUB_TOKEN. The workflow never checks out PR code; main/default/base/protected branches, forks and branch tips advanced after the merged PR head are preserved. No production runtime, deployment, database or AI routing change. Local branches remain untouched. See [DEPLOYMENT.md](DEPLOYMENT.md#merged-pr-branch-cleanup) for behavior, permissions and the API check/delete race limitation.
