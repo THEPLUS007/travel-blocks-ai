@@ -79,3 +79,9 @@ API fixtures inject resolver, factual source, clock, ID factory, and judge port.
 ## P2-DE-5 considered-place UI preparation fixtures
 
 `@travel-blocks/decision-api-contract` checks the shared V1 semantic candidate/decision partition plus strict candidate discovery request/set contracts. API fixtures use fake `PlaceSearchProvider` results to verify versioned discovery, canonical ordering, provider-reference deduplication, bounded output, failure envelopes, and unchanged recommendation behavior. Web fixtures validate one selected, one rejected, and one unresolved candidate, exhaustive reason/coverage/judge copy tables, raw internal-data exclusion, strict error parsing, malformed-success fail-closed behavior, retryability, and aborts. The route-intercepted E2E flow enters the real RecommendationPanel tree, retries discovery once, invokes Decision API once, and renders all three states without a live provider call.
+
+## P2-DE-6 decision replay — design defined, not implemented
+
+The [proposed behavior contract](../openspec/changes/p2-de-6-decision-snapshots-evaluation/specs/decision-replay-evaluation/spec.md) defines synthetic offline snapshots, full-policy/fixed-context replay, separate fake-judge reconciliation and safe reports. [Design and coverage matrix](../openspec/changes/p2-de-6-decision-snapshots-evaluation/design.md) distinguish expected execution failures from corrupt datasets and keep score expectations outside DecisionResult V1.
+
+The planned `npm run eval:decision` command, its JSON mode, versioned dataset/runner and CI gate do not exist yet. Existing `npm run eval` remains the itinerary baseline above. Neither a passing OpenSpec check nor the current package tests certifies this future replay capability, live model quality, durable decision history or P3 service readiness. Replay-manifest coverage and harness-correctness tests will be separate gates; artifact definitions and live production inputs are not interchangeable.
