@@ -142,6 +142,14 @@ Record prior known-good API release, static release, commit and migration versio
 
 Local baseline: Node from `.nvmrc`, `npm ci`, `npm run verify`, `npm run test:e2e`, `npm audit --omit=dev`, `for script in scripts/*.sh; do bash -n "$script"; done`, `python3 scripts/test-operations.py`. Real Nginx syntax requires an installed Nginx binary; never write `/etc/nginx` just to test a repository template. Check a temporary full config with `nginx -t -c ABSOLUTE_TEMP_CONFIG -p TEMP_PREFIX` if available. The template needs an `http` wrapper and mime types for this test. Phase 5 always requires `sudo nginx -t` before reload.
 
+## Merged PR branch cleanup
+
+`.github/workflows/delete-merged-branch.yml` handles `pull_request_target: closed` and deletes only a merged PR's source branch in this repository. It performs no checkout, dependency installation, PR code execution or deployment. Its isolated job grants only `contents: write` to the built-in GITHUB_TOKEN; validation CI retains read-only permissions. Forks, main/default/base branches, protected branches and branches whose tip differs from the merged PR head are preserved. Already absent branches are a successful no-op; API permission failures are visible workflow failures.
+
+After this workflow is merged into the default branch, inspect its first eligible merged-PR run to verify remote deletion. Local branches are not removed. Repository rulesets can prevent deletion. There is a small race between reading the branch tip and deleting its ref because GitHub's delete-ref API has no compare-and-delete parameter; avoid reusing a merged feature branch. The optional GitHub “Automatically delete head branches” setting can also delete the branch first; the workflow accepts an absent branch.
+
+Offline regression: `python3 scripts/test-branch-cleanup.py` (also run by Quality CI). This verifies deletion/skip/error decisions without GitHub writes. No live branch deletion is performed by the local checks.
+
 ## Official references
 
 - [Nginx proxy_pass and timeout semantics](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
@@ -149,3 +157,4 @@ Local baseline: Node from `.nvmrc`, `npm ci`, `npm run verify`, `npm run test:e2
 - [Certbot webroot and renewal](https://eff-certbot.readthedocs.io/en/stable/using.html)
 - [PostgreSQL pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html) and [pg_restore](https://www.postgresql.org/docs/current/app-pgrestore.html)
 - [GitHub Node.js validation workflow](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs)
+- [GitHub merged PR workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)

@@ -1,0 +1,30 @@
+schema: spec-driven
+
+context: |
+  OpenSpec is a task planning layer, not replacement engineering governance.
+  Before work, read AGENTS.md, docs/INVARIANTS.md, docs/CURRENT_STATUS.md,
+  docs/ROADMAP.md, then docs/ARCHITECTURE.md and relevant topic documents.
+  Follow their respective authority; reference them instead of copying rules,
+  implementation status, architecture, or phase ordering into OpenSpec.
+  Task artifacts describe proposed deltas only. Report conflicts with code/tests
+  and resolve with evidence under AGENTS.md; never silently override governance.
+  Artifact existence and CLI validation do not prove implementation completion.
+
+rules:
+  proposal:
+    - Link the governing roadmap stage and distinguish current deliverables from future implementation.
+    - State exclusions and compatibility impact; do not duplicate project-wide policies.
+  specs:
+    - Describe task-specific behavior deltas with testable scenarios; cite authoritative docs for shared constraints.
+  design:
+    - Cite inspected source/tests and governing documents; distinguish observations, proposals, and open decisions.
+  tasks:
+    - Keep future work unchecked; include relevant tests, lint/typecheck, build, evaluation, documentation, diff review and focused commit under AGENTS.md.
+
+operations:
+  apply:
+    guidance:
+      - Follow AGENTS.md and current user scope; planning-only requests do not authorize implementation.
+  archive:
+    guidance:
+      - Require AGENTS.md completion evidence and CURRENT_STATUS.md alignment; planning completion is not delivered functionality.

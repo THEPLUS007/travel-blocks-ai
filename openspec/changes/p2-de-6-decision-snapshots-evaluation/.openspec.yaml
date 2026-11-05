@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-05
+# OPS-01 is documentation-only: no behavioral specification is being adopted.
+# Remove this marker and write reviewed behavioral deltas before P2-DE-6 apply.
+skip_specs: true

@@ -7,6 +7,26 @@ Verified implementation baseline: `5b2aad27cdeb42dc30091d0024264d1619b550a5`
 
 이 문서는 실제 저장소와 검증 결과의 현재 상태만 기록합니다. 목표 구조는 `ROADMAP.md`, 불변 규칙은 `INVARIANTS.md`에서 관리합니다.
 
+## OPS-01 CI audit resolution and main synchronization — 2026-11-05
+
+PR #3's original run [42037931882](https://github.com/THEPLUS007/travel-blocks-ai/actions/runs/42037931882) failed only at `npm audit --omit=dev` (5 findings); verify, eval, E2E and PostgreSQL passed. Security PR #2 had been merged into the refactor branch, not main. With user authorization, refactor/security PR #1 was merged into main at `11f20081b007b6ef26ad70cd0624213b6079c821`, then main was merged into OPS-01 at `652f2b793e110bd2ac05cb82d8bd61d416073614` without conflicts. No force push, deployment or service restart was used.
+
+Post-merge local evidence: `npm ci` PASS; `npm run verify` PASS (328 Vitest tests plus MCP, lint/typecheck, package/app builds); `npm run eval` PASS (8/8, 98/98); `npm audit --omit=dev` PASS (0 vulnerabilities); `python3 scripts/test-branch-cleanup.py` PASS (10); `python3 scripts/test-operations.py` PASS (9); `OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive --json` PASS (1 change; documentation-only skip_specs); `git diff --check` PASS. `git diff --exit-code origin/main -- package.json package-lock.json apps packages` PASS: the OPS-01 delta does not modify main's product code/dependencies. Zod PURE-comment build warnings remain non-fatal. Clean install's development-inclusive audit reports 14 findings (12 moderate, 2 critical), separate from the passing production gate; no audit threshold was weakened. Updated OPS-01 remote CI remains to be observed after push; prior success is not substituted for that run. P2-DE-6 remains unimplemented.
+
+## Merged PR branch cleanup — 2026-11-05
+
+Added `.github/workflows/delete-merged-branch.yml` on `ops/ops-01-openspec-governance`. After the workflow reaches the default branch, merged same-repository PRs can delete their source branch using the isolated job's `contents: write` GITHUB_TOKEN. The workflow never checks out PR code; main/default/base/protected branches, forks and branch tips advanced after the merged PR head are preserved. No production runtime, deployment, database or AI routing change. Local branches remain untouched. See [DEPLOYMENT.md](DEPLOYMENT.md#merged-pr-branch-cleanup) for behavior, permissions and the API check/delete race limitation.
+
+Local evidence: `python3 scripts/test-branch-cleanup.py` PASS (10 offline tests), `python3 scripts/test-operations.py` PASS (9 tests), workflow YAML and embedded Python syntax checks PASS, `npm run eval` PASS (8/8 scenarios, 98/98 checks). `npm run verify` PASS (lint/typecheck, 326 Vitest tests plus MCP, package/app builds); `git diff --check` PASS. Cleanup tests are added to Quality CI. No live GitHub branch deletion, remote workflow run, push or merge was performed; end-to-end deletion remains unverified until an eligible merged PR runs the workflow.
+
+## OPS-01 OpenSpec planning tooling — 2026-11-05
+
+On branch `ops/ops-01-openspec-governance`, based on `70babadcf3f8a3b8fe7937638701e2b11688b2a2`, OpenSpec 1.16.0 was installed with explicit user approval and initialized for Codex at the repository root. Six generated skills were inspected and adapted to reference existing engineering governance. Root AGENTS.md, INVARIANTS.md and ROADMAP.md retain their authority and content. See [OPENSPEC_GOVERNANCE.md](OPENSPEC_GOVERNANCE.md) for mapping, file inventory, conflict audit, exact commands and limitations.
+
+The initial [P2-DE-6 proposal](../openspec/changes/p2-de-6-decision-snapshots-evaluation/proposal.md), design and tasks are planning only: **0/9 implementation tasks complete**, no behavior specs adopted, no P2-DE-6 implementation. Strict OpenSpec validation passes with the explicit documentation-only `skip_specs` marker; remove it and review behavioral deltas before implementation. P2-DE-6 remains PLANNED and the next feature stage.
+
+Local verification: `npm run verify` PASS (326 Vitest tests plus MCP, package/app builds and lint), `npm run typecheck` PASS, `npm run eval` PASS (8/8 scenarios, 98/98 checks), OpenSpec strict change/all validation and spec-driven schema validation PASS, local Markdown links/skill checks PASS, `git diff --check` PASS. No product source/API/DB/LLM routing/deployment/secret change. Remote CI, PostgreSQL integration, browser E2E and live product-provider checks were not run for OPS-01.
+
 ## Maintenance refactoring — 2026-10-29
 
 중복·복잡도 감사 후 사용하지 않는 legacy Gemini client, 해커톤 타입, mock 재export, 분석 전달 래퍼 4개를 제거했습니다. 두 web Decision client의 전송 코드를 공유하고, 기존 domain 날짜 번호 함수를 재사용하며, 편집 변환 함수를 훅에서 분리했습니다. 연결 검사의 불필요한 배열 복사와 verify의 동일 검사 중복을 제거했습니다. API/DB/AI routing 및 제품 기능 계약은 유지했습니다. 자세한 근거·제외 범위: [REFACTORING_AUDIT.md](REFACTORING_AUDIT.md).
