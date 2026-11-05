@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { z } from 'zod';
 import { GenerateTripResponseSchema, TravelIntentSchema, PlaceRankingResultSchema, type PlaceRankingInput } from '@travel-blocks/shared';
 import { AiProviderError, GeminiTravelAiProvider } from '../src/index.js';
 import { toGeminiResponseJsonSchema } from '../src/gemini/structuredOutput.js';
@@ -9,6 +11,23 @@ const rankingInput: PlaceRankingInput = { trip: validPlan.trip, day: { id: 'd1',
 const gemini = (value: unknown) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: typeof value === 'string' ? value : JSON.stringify(value) }] } }] }), { status: 200 });
 
 describe('Gemini structured outputs', () => {
+  it('preserves the Zod 3 Gemini request schemas apart from the safe-integer bound', () => {
+    const baseline = JSON.parse(readFileSync(new URL('./fixtures/gemini-zod3-schemas.json', import.meta.url), 'utf8'));
+    baseline.GenerateTripResponseSchema.properties.days.items.properties.dayNumber.maximum = Number.MAX_SAFE_INTEGER;
+    expect({
+      GenerateTripResponseSchema: toGeminiResponseJsonSchema(GenerateTripResponseSchema),
+      TravelIntentSchema: toGeminiResponseJsonSchema(TravelIntentSchema),
+      PlaceRankingResultSchema: toGeminiResponseJsonSchema(PlaceRankingResultSchema),
+    }).toEqual(baseline);
+  });
+
+  it('rejects an oversized bounded array before parsing its elements', () => {
+    const elementCheck = vi.fn(() => true);
+    const schema = z.array(z.string().refine(elementCheck)).max(1);
+    expect(schema.safeParse(Array(10_000).fill('x')).success).toBe(false);
+    expect(elementCheck).not.toHaveBeenCalled();
+  });
+
   it('Zod schema를 Gemini 지원 JSON Schema subset으로 변환한다', () => {
     const schema = toGeminiResponseJsonSchema(GenerateTripResponseSchema);
     expect(schema).toMatchObject({ type: 'object', properties: { trip: { type: 'object' }, days: { type: 'array' } } });
